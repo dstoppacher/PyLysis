@@ -1,4 +1,4 @@
-"""Halo, merger tree handling and analysis Last update 2021-02-24 by DS
+"""Halo, merger tree handling and analysis Last update 2021-02-26 by DS
 
 """
 from __future__ import print_function
@@ -19,9 +19,9 @@ from time import time
 task='load_entire_box' 
 task='compare_individual_halos'
 task='construct_merger_trees'
-#task='walk_merger_trees'
+task='walk_merger_trees'
 #task='get_halo_info'
-#task='get_merger_tree_stats'
+task='get_merger_tree_stats'
 
 class HaloAnalysis:
     
@@ -71,7 +71,7 @@ class HaloAnalysis:
         
         
         treeID                  = 0     #treeID of the first merger tree to be read in
-        treeID_end              = 1000   #treeID of the last merger tree to be read in
+        treeID_end              = 704   #treeID of the last merger tree to be read in
         
         
         self.total_snaps2read   = snapid_end-snapid
@@ -131,7 +131,7 @@ class HaloAnalysis:
             print('Time until all halos tracked:', format((time()-start)/60.0/60.0, '0.2f'), 'h /', format((time()-start)/60.0, '0.2f'), 'min /', format((time()-start), '0.1f'), 'sec')
 
             ha_lib.writeIntoFile(
-                       self.path_basename+'all_data_MM.txt',
+                       self.path_basename+'all_data_HH.txt',
                        data[['haloid','descIndex', 'rootIndex', 'predIndex', 'mhalo', 'delta_mhalo', 'rvir', 'delta_rvir', 'x_pos', 'y_pos', 'z_pos', 'snapid', 'n_particles', 'npros']],
                        myheader='All halos fro Cholla 50Mpc 256 box from Bruno run 29/01/2021\n'\
                        +'(1) haloid (2) descIndex (3) rootIndex (4) predIndex (5) Mvir [h-1Msun] (6) delta_Mvir [h-1Msun] (7) Rvir [h-1kpc] (8) delt_Rvir [h-1kpc]'\
@@ -143,10 +143,13 @@ class HaloAnalysis:
         def walk_merger_trees():
             
             load_entire_box()
-            mytree_data = ha_lib.read_unshaped_txt(self.path_basename+'merger_trees.txt', 102, self.total_snaps_sim, delimiter=' ', comments='#', dtype=np.int32) 
+            mytree_data = ha_lib.read_unshaped_txt(self.path_basename+'merger_trees_HH.txt', treeID_end+10, self.total_snaps_sim, delimiter=' ', comments='#', dtype=np.int32)
+                                                   
+            #print(mytree_data[703::, :])
+            #exit()                                       
             count_error=0
             failed_IDs=[]
-            for i in range(0,100,1):
+            for i in range(0,treeID_end+1,1):
                 if self.total_snaps2read>=mytree_data[i,1]-mytree_data[i,0]:
                     end_snap=mytree_data[i,1]-mytree_data[i,0]
                 else:
@@ -165,7 +168,7 @@ class HaloAnalysis:
 
         def get_merger_tree_stats(print_into_file=True):
 
-            tree_data=self.load_data_merger_trees(treeID,treeID_end,file_basename='data_comparision_MM')
+            tree_data=self.load_data_merger_trees(treeID,treeID_end,file_basename='data')
             #print(np.info(tree_data))
             merger_tree_stats, myheader, mycols, myformat_string, mydt = ha_lib.create_data_array('stats_perc_bucket')
             
@@ -173,6 +176,7 @@ class HaloAnalysis:
             #print(dt_basic)                  
             myprops=ha_lib.get_props_for_stats_calc(dt_basic, input_is_dtype=True)       
             #print(myprops)
+            #exit()
             
             for i, snap in enumerate(range(snapid,snapid_end,1)):
                 
@@ -327,12 +331,13 @@ class HaloAnalysis:
                         sel_name='',
                         sel_value=None,
                         dt=None,
-                        print_on_screen=False):
+                        print_on_screen=True):
         """Function calculates the median and 10th, 32the, 68th and 90th percentiles. The median and 10th and 90th are also printed on the screen.
             A data-bucket as an 1-row structrued array is returned where the statistics of all properties defined in 'props' are calculated.
             Optionally one can select a subsample from a specific property defined as 'sel_name' and the corresponding value 'sel_value' e.g. snapshot
             column name 'snapid' and snsnapshot number '258' as value.            
         """
+        from statsmodels import robust
         #print(np.info(data))
         try:
             if sel_name!=None:
@@ -368,9 +373,12 @@ class HaloAnalysis:
                     
                     bucket_stats[prop+'_log50'] = "{0:.2f}".format(np.log10(np.nanmedian(sample[prop])))
                     bucket_stats[prop+'_log10'] = "{0:.2f}".format(np.log10(np.nanmedian(sample[prop]))-np.log10(np.nanpercentile(sample[prop], 10)))
-                    bucket_stats[prop+'_log32'] = "{0:.2f}".format(np.log10(np.nanmedian(sample[prop]))-np.log10(np.nanpercentile(sample[prop], 32)))
-                    bucket_stats[prop+'_log68'] = "{0:.2f}".format(np.log10(np.nanpercentile(sample[prop], 68))-np.log10(np.nanmedian(sample[prop])))
-                    bucket_stats[prop+'_log90'] = "{0:.2f}".format(np.log10(np.nanpercentile(sample[prop], 90))-np.log10(np.nanmedian(sample[prop])))                            
+                    #bucket_stats[prop+'_log32'] = "{0:.2f}".format(np.log10(np.nanmedian(sample[prop]))-np.log10(np.nanpercentile(sample[prop], 32)))
+                    #bucket_stats[prop+'_log68'] = "{0:.2f}".format(np.log10(np.nanpercentile(sample[prop], 68))-np.log10(np.nanmedian(sample[prop])))
+                    bucket_stats[prop+'_log90'] = "{0:.2f}".format(np.log10(np.nanpercentile(sample[prop], 90))-np.log10(np.nanmedian(sample[prop])))
+
+                    bucket_stats[prop+'_log32'] = np.log10(robust.mad(sample[prop]))
+                    bucket_stats[prop+'_log68'] = np.log10(robust.mad(sample[prop]))                       
                 else:
                     if print_on_screen==True:
                         print("{0:.2f}".format(np.nanmedian(sample[prop])), '\t',\
@@ -379,9 +387,12 @@ class HaloAnalysis:
     
                     bucket_stats[prop+'_50'] = np.nanmedian(sample[prop])
                     bucket_stats[prop+'_10'] = np.nanmedian(sample[prop])-np.nanpercentile(sample[prop], 10)
-                    bucket_stats[prop+'_32'] = np.nanmedian(sample[prop])-np.nanpercentile(sample[prop], 32)
-                    bucket_stats[prop+'_68'] = np.nanpercentile(sample[prop], 68)-np.nanmedian(sample[prop])
+                    #bucket_stats[prop+'_32'] = np.nanmedian(sample[prop])-np.nanpercentile(sample[prop], 32)
+                    #bucket_stats[prop+'_68'] = np.nanpercentile(sample[prop], 68)-np.nanmedian(sample[prop])
                     bucket_stats[prop+'_90'] = np.nanpercentile(sample[prop], 90)-np.nanmedian(sample[prop])
+                    
+                    bucket_stats[prop+'_32'] = robust.mad(sample[prop])
+                    bucket_stats[prop+'_68'] = robust.mad(sample[prop])
 
         except:
             print('data selection not available! --> SKIPPED!')
@@ -649,7 +660,7 @@ class HaloAnalysis:
                 z_last_app.update({tree_id:snap_last_app})                
    
         if print_merger_tree2file==True: 
-            filename_trees=self.path_basename+'merger_trees_MM.txt'     
+            filename_trees=self.path_basename+'merger_trees_HH.txt'     
 
             for tree_id in merger_dict.keys():
                 if tree_id==tree_list2analyse[0]:
@@ -687,7 +698,7 @@ class HaloAnalysis:
         data, data_before = self.assign_progenitor_indices(data, data_before, snapid, first_assignment=first_assignment)
         
         tree_data=data[np.where(data['rootIndex']==tree_id)[:][0]]
-        tree_data[::-1].sort(order='mhalo', axis=0)
+        tree_data[::-1].sort(order='haloid', axis=0)
     
         import numpy.lib.recfunctions as rcfuncs
         tree_data = rcfuncs.append_fields([tree_data], ['Z'] , [np.zeros(tree_data.size,)], dtypes=['f4'], usemask=False)
@@ -765,7 +776,7 @@ class HaloAnalysis:
 
         if len(progIDs)>0:         
             ha_lib.writeIntoFile(
-                       self.path_basename+'data_comparision_treeID'+str(rootID)+'.txt',
+                       self.path_basename+'data_HH_treeID'+str(rootID)+'.txt',
                        data[mycols],
                        myheader='All halos fro Cholla 50Mpc 256 box from Bruno run 29/01/2021\n'+myheader,
                        mydelimiter='\t',
