@@ -30,6 +30,78 @@ def get_dtype_sarray(name):
                 usage e.g. mydata=np.fromfile(myfile, dt)
     
     """
+    
+    def ConsistentTrees_ASCII():
+        """
+        Property names and column in Consitent-Tree ascii files (after runing it on ROCKSTAR), original labels of properties in the file are commanded. 
+        Label names are converted to internal universal name convention.
+
+       
+        List of property labels in Rockstar ascii files:    
+            scale(0) id(1) desc_scale(2) desc_id(3) num_prog(4) pid(5) upid(6) desc_pid(7) phantom(8) sam_mvir(9) mvir(10) rvir(11) rs(12) vrms(13) mmp?(14)
+            scale_of_last_MM(15) vmax(16) x(17) y(18) z(19) vx(20) vy(21) vz(22) Jx(23) Jy(24) Jz(25) Spin(26) Breadth_first_ID(27) Depth_first_ID(28) Tree_root_ID(29)
+            Orig_halo_ID(30) Snap_num(31) Next_coprogenitor_depthfirst_ID(32) Last_progenitor_depthfirst_ID(33) Rs_Klypin Mvir_all M200b M200c M500c M2500c Xoff Voff
+            Spin_Bullock b_to_a c_to_a A[x] A[y] A[z] b_to_a(500c) c_to_a(500c) A[x](500c) A[y](500c) A[z](500c) T/|U| M_pe_Behroozi M_pe_Diemer Halfmass_Radius
+        """
+        dt=    [('a'               , np.float32), #scale(0)
+                ('haloid_CT'       , np.int64),   #id(1)
+                ('a_desc'          , np.float32), #desc_scale(2)
+                ('descID'          , np.int64),   #desc_id(3)
+                ('n_prog'          , np.int32),   #num_prog(4)
+                ('hostid_LM'       , np.int64),   #pid(5)              
+                ('hostid_MM'       , np.int64),   #upid(6)
+                ('desc_hostid_MM'  , np.int64),   #desc_pid(7)
+                ('is_phantom'      , np.int32),    #phantom(8)             
+                ('sam_mvir'        , np.float32), #sam_mvir(9)
+                ('mhalo'           , np.float32), #mvir(10)                
+                ('rvir'            , np.float32), #rvir(11)
+                ('rscale'          , np.float32), #rs(12)
+                ('vrms'            , np.float32), #vrms(13)                               
+                ('is_mmp'          , np.int32),    #mmp?(14)
+                ('a_lastMM'        , np.float32), #scale_of_last_MM(15)
+                ('vmax'            , np.float32), #vmax(16)
+                ('x_pos'           , np.float32), #x(17)
+                ('y_pos'           , np.float32), #y(18)
+                ('z_pos'           , np.float32), #z(19)
+                ('x_vel'           , np.float32), #vx(20)
+                ('y_vel'           , np.float32), #vy(21)
+                ('z_vel'           , np.float32), #vz(22)
+                ('x_ang'           , np.float32), #Jx(23)
+                ('y_ang'           , np.float32), #Jy(24)
+                ('z_ang'           , np.float32), #Jz(25)
+                ('spinParameter'   , np.float32), #Spin(26)
+                ('BFirstID'        , np.int64),   #Breadth_first_ID(27)
+                ('DFirstID'        , np.int64),   #Depth_first_ID(28)               
+                ('rootIndex'       , np.int64),   #Tree_root_ID(29)                               
+                ('haloid'          , np.int64),   #Orig_halo_ID(30)
+                ('snapid'          , np.int32),    #Snap_num(31)                
+                ('NextCoDFirstID'  , np.int64),   #Next_coprogenitor_depthfirst_ID(32)
+                ('LastCoDFirstID'  , np.int64),   #Last_progenitor_depthfirst_ID(33)                 
+                ('rscale_Klypin'   , np.float32), #rs_Klypin
+                ('mhalo+unbound'   , np.float32), #mvir_all                            
+                ('mhalo_200b'      , np.float32), #m200b   
+                ('mhalo_200c'      , np.float32), #m200c
+                ('mhalo_500c'      , np.float32), #m500c
+                ('mhalo_2500c'     , np.float32), #m2500c
+                ('x_off'           , np.float32), #Xoff
+                ('v_off'           , np.float32), #Yoff
+                ('spin_Bullock'    , np.float32), #spin_bullock
+                ('b_to_a'          , np.float32), #b_to_a  
+                ('c_to_a'          , np.float32), #c_to_a
+                ('x_a'             , np.float32), #A[x]
+                ('y_a'             , np.float32), #A[y]
+                ('z_a'             , np.float32), #A[z] 
+                ('b_to_a_500c'     , np.float32), #b_to_a(500c)
+                ('c_to_a_500c'     , np.float32), #c_to_a(500c)    
+                ('x_a_500c'        , np.float32), #A[x](500c)    
+                ('y_a_500c'        , np.float32), #A[y](500c) 
+                ('z_a_500c'        , np.float32), #A[z](500c)
+                ('T_U'             , np.float32), #T/|U|
+                ('Mpseudo_Behroozi', np.float32), #M_pe_Behroozi
+                ('Mpseudo_Diemer'  , np.float32), #M_pe_Diemer
+                ('rhalf_mass'      , np.float32), #Halfmass_Radius           
+                 ] 
+        return dt
 
     def stats_basic_bucket():
 
@@ -403,6 +475,7 @@ def get_dtype_sarray(name):
 
     choose = {
         'merger_trees_ASCII':   merger_trees_ASCII,
+        'ConsistentTrees_ASCII': ConsistentTrees_ASCII,
         'stats_basic_bucket':   stats_basic_bucket,
         'stats_perc_bucket':    stats_perc_bucket,
         'ROCKSTAR_ASCII':       ROCKSTAR_ASCII,
@@ -432,6 +505,15 @@ def load_ASCII_AHF():
     data = ha_lib.df_to_sarray(data_pandas)
     
     return data
+
+def load_ASCII_ConsitentTrees(path):   
+
+    dt   = get_dtype_sarray('ConsistentTrees_ASCII')
+   
+    data = ha_lib.df_to_sarray(pd.read_csv(path, comment='#', names=[k[0] for k in dt], delim_whitespace=True, dtype=dt))                              
+        
+    return data
+
  
 def load_binary_GADGET():
     import ReadGadget as rG
@@ -587,7 +669,7 @@ def load_binary_ROCKSTAR(path,
 
 def get_descIndex(path, snapid):
     
-    dt=get_dtype_sarray('ROCKSTAR_ASCII_list')
+    dt   = get_dtype_sarray('ROCKSTAR_ASCII_list')
     data = ha_lib.df_to_sarray(pd.read_csv(path+'out_'+str(snapid)+'.list', comment='#', names=[k[0] for k in dt], sep=' ', dtype=dt))
                                              
     data.sort(order=['haloid'], axis=0)

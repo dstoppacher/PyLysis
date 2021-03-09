@@ -18,10 +18,11 @@ from time import time
  
 task='load_entire_box' 
 task='compare_individual_halos'
-task='construct_merger_trees'
+task='construct_main_prog_tree'
+task='crossmatch_consitent_IDs'
 task='walk_merger_trees'
 #task='get_halo_info'
-task='get_merger_tree_stats'
+#task='get_merger_tree_stats'
 
 class HaloAnalysis:
     
@@ -42,13 +43,27 @@ class HaloAnalysis:
         self.path_basename='/data/256_hydro_Cholla50Mpc_halo_tests/'
         #self.path_basename='/home/dstoppac/anaconda/pro/data/Cholla256_50Mpc_halo_tests/'
         #Test files provided by Bruno (01/29/2021) here
-        #self.path_basename='/data/groups/comp-astro/bruno/cosmo_sims/256_hydro_50Mpc_halo_tests/'        
+        #self.path_basename='/data/groups/comp-astro/bruno/cosmo_sims/256_hydro_50Mpc_halo_tests/' 
+        
+        self.output_filename_merger_trees       = 'merger_trees_CTreeID79509.txt'
+        self.output_filename_data               = 'all_data_CTreeID79509.txt'
+        self.output_filename_data_tree_basename = 'data_treeID'
+        self.CT_merger_trees                    = 'Cholla256_50Mpc_halo_tests_trees_1.0.txt'
 
         self.snapid_array = ha_lib.df_to_sarray(pd.read_csv(self.path_basename+'snapidzred.txt', 
                                                    skiprows=2, 
                                                    names=['snapid', 'z', 'a', 't'], 
                                                    sep=' '))
         
+        
+#        ha_lib.writeIntoFile(
+#                   self.path_basename+'DescScales.txt',
+#                   self.snapid_array[::-1][['snapid','a']],
+#                   myheader='',
+#                   mydelimiter=' ',
+#                   data_format='%i %0.3f')       
+#        
+#        exit()
         #print(self.snapid_array)
 
         #Simulation specific input!
@@ -66,12 +81,12 @@ class HaloAnalysis:
     def MAIN(self, task):   
         ##############################################################################################################
         # User Configuration Space       
-        snapid                  = 65    #Snapshot number of the first snapshot to be read in
+        snapid                  = 104    #Snapshot number of the first snapshot to be read in
         snapid_end              = 258    #Snapshot number of the last snapshot to be read in
         
         
         treeID                  = 0     #treeID of the first merger tree to be read in
-        treeID_end              = 704   #treeID of the last merger tree to be read in
+        treeID_end              = 1   #treeID of the last merger tree to be read in
         
         
         self.total_snaps2read   = snapid_end-snapid
@@ -94,7 +109,7 @@ class HaloAnalysis:
                     info of halo properties from self.myprops2read printed on the screen
             """
             load_entire_box()
-            self.get_halo_info(haloid=3, snapid=snapid)
+            self.get_halo_info(haloid=45, snapid=snapid)
             
 
         def compare_individual_halos(): 
@@ -120,18 +135,18 @@ class HaloAnalysis:
             load_entire_box()
             self.compare_halo_info(haloid1=3, haloid2=3, snapid1=snapid, snapid2=snapid+1, print_on_screen=True)        
 
-        def construct_merger_trees():
+        def construct_main_prog_tree():
             start = time() 
     
-            data, merger_dict, first_z_dict = self.construct_merger_tree(n_trees=[],
-                                                                           snapid=snapid,
-                                                                           snapid_end=snapid_end)
+            data, merger_dict, first_z_dict = self.construct_main_prog_tree(haloid=45,
+                                                                         snapid=snapid,
+                                                                         snapid_end=snapid_end)
             
 
             print('Time until all halos tracked:', format((time()-start)/60.0/60.0, '0.2f'), 'h /', format((time()-start)/60.0, '0.2f'), 'min /', format((time()-start), '0.1f'), 'sec')
 
             ha_lib.writeIntoFile(
-                       self.path_basename+'all_data_HH.txt',
+                       self.path_basename+self.output_filename_data,
                        data[['haloid','descIndex', 'rootIndex', 'predIndex', 'mhalo', 'delta_mhalo', 'rvir', 'delta_rvir', 'x_pos', 'y_pos', 'z_pos', 'snapid', 'n_particles', 'npros']],
                        myheader='All halos fro Cholla 50Mpc 256 box from Bruno run 29/01/2021\n'\
                        +'(1) haloid (2) descIndex (3) rootIndex (4) predIndex (5) Mvir [h-1Msun] (6) delta_Mvir [h-1Msun] (7) Rvir [h-1kpc] (8) delt_Rvir [h-1kpc]'\
@@ -139,13 +154,50 @@ class HaloAnalysis:
                        mydelimiter='\t',
                        data_format='%i\t%i\t%i\t%i\t%0.6e\t%0.6e\t%0.4f\t%0.4f\t%0.4f\t%0.4f\t%0.4f\t%i\t%i\t%i')
 
+        def crossmatch_consitent_IDs():
+            
+            data_CT = ha_lc.load_ASCII_ConsitentTrees(self.path_basename+'/halo_files/trees/'+self.CT_merger_trees)
+            
+            #print(data_CT)
+            
+            #print(np.info(data_CT))
+            mydata_tree=data_CT[np.where(data_CT['rootIndex']==79509)[0][:]]           
+
+            mydata_tree[::-1].sort(order=['snapid'], axis=0)
+            mydata_tree.sort(order=['DFirstID'], axis=0)
+                      
+            test, index = np.unique(mydata_tree['snapid'], return_index=True)
+            mydata_tree_MB=mydata_tree[index]
+            
+            #print(mydata_tree_MB[['snapid','haloid','descID','haloid_RS','DFirstID','mhalo']])
+            
+#            ha_lib.writeIntoFile(
+#                       self.path_basename+'MB_test.txt',
+#                       mydata_tree_MB[['snapid','haloid','descID','haloid_RS','DFirstID']],
+#                       myheader='',
+#                       mydelimiter='\t',
+#                       data_format='%i') 
+            
+            return mydata_tree_MB[['snapid','haloid_CT','descID','haloid','DFirstID']]
+            
 
         def walk_merger_trees():
             
             load_entire_box()
-            mytree_data = ha_lib.read_unshaped_txt(self.path_basename+'merger_trees_HH.txt', treeID_end+10, self.total_snaps_sim, delimiter=' ', comments='#', dtype=np.int32)
-                                                   
-            #print(mytree_data[703::, :])
+            
+            
+            
+            #mytree_data = ha_lib.read_unshaped_txt(self.path_basename+self.output_filename_merger_trees, treeID_end+10, self.total_snaps_sim, delimiter=' ', comments='#', dtype=np.int32)
+             
+            mytree_data_MB = crossmatch_consitent_IDs()                                       
+            mytree_data = np.zeros((1,3+mytree_data_MB.size), dtype=np.int64)
+            
+            mytree_data[0,0]=104+0
+            mytree_data[0,1]=104+154
+            mytree_data[0,2]=79509
+            mytree_data[0, 3::]=mytree_data_MB['haloid']
+            
+            #print(mytree_data)
             #exit()                                       
             count_error=0
             failed_IDs=[]
@@ -158,7 +210,9 @@ class HaloAnalysis:
                 print('i:', i, 'snapid_first:', mytree_data[i,0], 'snapid_last:', mytree_data[i,1], 'n_snaps2read:', end_snap, 'rootIndex:', mytree_data[i,2], 'progIDs:', mytree_data[i, 3:end_snap+3], 'check_sum:', len(mytree_data[i, 3:end_snap+3]))
 
                 #exit()
-                tree_structure=self.track_merger_tree(mytree_data[i,0], mytree_data[i,0]+end_snap, mytree_data[i,2], mytree_data[i, 3:end_snap+3])
+                #tree_structure=self.track_merger_tree(mytree_data[i,0], mytree_data[i,0]+end_snap, mytree_data[i,2], mytree_data[i, 3:end_snap+3])
+                tree_structure=self.track_merger_tree(mytree_data[i,0], mytree_data[i,0]+end_snap, mytree_data[i,2], mytree_data_MB['haloid'])
+
                 if tree_structure==False:
                     count_error+=1
                     failed_IDs.extend([mytree_data[i,2]])
@@ -195,7 +249,7 @@ class HaloAnalysis:
             #print(np.info(merger_tree_stats))
             if print_into_file==True:
                 ha_lib.writeIntoFile(
-                       self.path_basename+'merger_tree_stats.txt',
+                       self.path_basename+self.output_filename_merger_trees[::-3]+'_stats.txt',
                        merger_tree_stats[mycols],
                        myheader='statistics of properties found in halos from Cholla 50Mpc 256 box from Bruno run 29/01/2021\n'+myheader,
                        mydelimiter='\t',
@@ -207,10 +261,10 @@ class HaloAnalysis:
             choose = {
                 'load_entire_box':          load_entire_box,
                 'compare_individual_halos': compare_individual_halos,
-                'construct_merger_trees':   construct_merger_trees,
+                'construct_main_prog_tree': construct_main_prog_tree,                
                 'walk_merger_trees':        walk_merger_trees,
                 'get_halo_info':            get_halo_info,
-                'get_merger_tree_stats':    get_merger_tree_stats                
+                'crossmatch_consitent_IDs': crossmatch_consitent_IDs               
                 }
         
             func = choose.get(task)
@@ -227,7 +281,7 @@ class HaloAnalysis:
                                   data_RS_before,
                                   snapid_before,
                                   first_assignment=1,
-                                  document_progress=False):
+                                  show_info=False):
         """Function assigns predestant indices to the descdent indices and the haloids from a list of halo properties from ROCKSTAR out_xxx.list halo catalog. xxx stands for the 
         the snapshot number. The function goes through every snapshot and connect the haloid and descdent index of the main progenitor (also most massive progenitor) of a halo with
         the predestant index a snapshot before. It further assigns a unique tree index (treeID -- an ascending number of the first occurence of the halo)
@@ -254,7 +308,8 @@ class HaloAnalysis:
         data_RS_now = rcfuncs.append_fields([data_RS_now], 
                                             ['delta_mhalo','delta_rvir','predIndex','rootIndex','npros'], 
                                             [np.zeros(data_RS_now.size,),np.zeros(data_RS_now.size,),np.zeros(data_RS_now.size,),np.zeros(data_RS_now.size,),np.zeros(data_RS_now.size,)], 
-                                            dtypes=['f4','f4','i8','i8','i4'], usemask=False)
+                                            dtypes=['f4','f4','i8','i8','i4'], 
+                                            usemask=False)
        
         data_RS_now['npros']    = -99
         data_RS_now['rootIndex']= -99
@@ -264,7 +319,8 @@ class HaloAnalysis:
             data_RS_before = rcfuncs.append_fields([data_RS_before], 
                                                    ['npros','rootIndex','predIndex'] , 
                                                    [np.zeros(data_RS_before.size,),np.zeros(data_RS_before.size,),np.zeros(data_RS_before.size,)], 
-                                                   dtypes=['i4','i8','i8'], usemask=False)
+                                                   dtypes=['i4','i8','i8'], 
+                                                   usemask=False)
             data_RS_before['npros']    = -99
             data_RS_before['rootIndex']= -99
             data_RS_before['predIndex']= data_RS_before['haloid']        
@@ -312,9 +368,9 @@ class HaloAnalysis:
         parentIndices, index_root, index_now = np.intersect1d(data_wo_root['haloid'], data_RS_now['haloid'], return_indices=True)
         data_RS_now['rootIndex'][index_now]=data_wo_root['rootIndex'][index_root]
 
-        if document_progress==True:        
-            print('data_RS_before:\n', data_RS_before[['haloid','descIndex', 'rootIndex', 'n_particles', 'mhalo', 'x_pos', 'y_pos', 'z_pos', 'predIndex']],\
-                  '\ndata_RS_now:\n', data_RS_now[['haloid','descIndex', 'rootIndex', 'n_particles', 'mhalo', 'x_pos', 'y_pos', 'z_pos', 'predIndex']],\
+        if show_info==True:        
+            print('data_RS_before:\n', data_RS_before[['haloid','descIndex', 'predIndex', 'rootIndex', 'n_particles', 'mhalo', 'x_pos', 'y_pos', 'z_pos']],\
+                  '\ndata_RS_now:\n', data_RS_now[['haloid','descIndex', 'predIndex', 'rootIndex', 'n_particles', 'mhalo', 'x_pos', 'y_pos', 'z_pos', ]],\
                   'PROGENITOR INFO successfully assigned!\n#################################################')           
 
         return data_RS_now, data_RS_before
@@ -574,12 +630,15 @@ class HaloAnalysis:
         else:
             return data
      
-    def construct_merger_tree(self,
+    def construct_main_prog_tree(self,
                               haloid=None,
-                              n_trees=[],
+                              n_trees=1,
                               snapid=None,
                               snapid_end=None,
-                              print_merger_tree2file=True):
+                              print_merger_tree2file=True,
+                              show_infos=True,
+                              identify_MB_by='dFirstID'):
+        
         """Function constructs merger trees of detected halos using ROCKSTAR halo binary information and descendent IDs 'DescID' from out_x.list
         catalogs (where x stands for the snapshot number)
         
@@ -601,14 +660,14 @@ class HaloAnalysis:
 
                         
         if haloid==None and n_trees==[]:
-             tree_list2analyse=range(0,1000,1)           
-        elif haloid!=None:           
-            if type(haloid)==list:
-                tree_list2analyse=haloid
-            else:
-                tree_list2analyse=[haloid]
+             tree_list2analyse=range(0,1,1)           
+#        elif haloid!=None:           
+#            if type(haloid)==list:
+#                tree_list2analyse=haloid
+#            else:
+#                tree_list2analyse=[haloid]
         else:                
-            tree_list2analyse=range(0,n_trees,1)               
+            tree_list2analyse=range(0,n_trees,1)
             
         if snapid!=None:
             mysnap_array=self.snapid_array[np.where(self.snapid_array['snapid']==snapid_end)[:][0][0]:np.where(self.snapid_array['snapid']==snapid)[:][0][0]+1]
@@ -618,28 +677,43 @@ class HaloAnalysis:
         data_before = self.load_data_ROCKSTAR(self.path_basename,
                                               np.sort(mysnap_array['snapid'])[0],
                                               return_particle_info=False)
-        data_before, data_dummy = self.assign_progenitor_indices(data_before, data_before, snapid, first_assignment=0)
-       
+        if haloid!=None:
+            data_before=data_before[np.where(data_before['haloid']==haloid)[:][0]]
+            print(data_before[['haloid','descIndex', 'n_particles', 'mhalo', 'x_pos', 'y_pos', 'z_pos']])
+
+        data_before, data_dummy = self.assign_progenitor_indices(data_before, data_before, np.sort(mysnap_array['snapid'])[0], first_assignment=0)
+        print(data_before[['haloid','descIndex', 'rootIndex', 'predIndex', 'mhalo', 'delta_mhalo', 'rvir', 'delta_rvir', 'x_pos', 'y_pos', 'z_pos', 'snapid', 'n_particles', 'npros']], '\n', data_dummy)
+        exit()
         for tree_id in tree_list2analyse:
             progs_tree=[]
             print('tree_id:', tree_id, '/', len(tree_list2analyse)-1, '... processing!')
                 
             count_first_app=0                 
             count_last_app=0            
-            for i, snapid in enumerate(np.sort(mysnap_array['snapid'])):
+            for i, snapid in enumerate(np.sort(mysnap_array['snapid'])[1::]):
                 
                 if i==0:
                     data=data_before
+ 
                 else:
                     data = np.append(data, data_before, axis=0)                
-                
+                print('BEFORE desc indentification:\n', data_before[['haloid','descIndex', 'rootIndex', 'n_particles', 'mhalo', 'x_pos', 'y_pos', 'z_pos']])
                 new_data, progID, data_before = self.get_progenitor_data(self.path_basename,
                                                                          data_before,
                                                                          snapid,
-                                                                         tree_id)
+                                                                         tree_id,
+                                                                         sort_prop_by=identify_MB_by)
  
+                if show_infos==True:
+                    print('processing treeID:', tree_id, '--> progIDs found at snapshot', snapid,':', progID,\
+                          #'data_before:', data_before[['haloid','descIndex', 'rootIndex', 'n_particles', 'mhalo', 'x_pos', 'y_pos', 'z_pos', 'predIndex']],\
+                          '\nnew_data:', new_data[['haloid','descIndex', 'rootIndex', 'n_particles', 'mhalo', 'x_pos', 'y_pos', 'z_pos', 'predIndex']])
+
+    
+    
                 if len(progID)>1:
                     progID=[progID[0]]
+                    
 
                 progs_tree.extend(progID)
                 
@@ -660,7 +734,7 @@ class HaloAnalysis:
                 z_last_app.update({tree_id:snap_last_app})                
    
         if print_merger_tree2file==True: 
-            filename_trees=self.path_basename+'merger_trees_HH.txt'     
+            filename_trees=self.path_basename+self.output_filename_merger_trees     
 
             for tree_id in merger_dict.keys():
                 if tree_id==tree_list2analyse[0]:
@@ -680,7 +754,7 @@ class HaloAnalysis:
                                data_is_string=True,
                                data_format='%s')
         
-        return data, merger_dict, z_first_app
+        return data_tree, merger_dict, z_first_app
     
     
     def get_progenitor_data(self,
@@ -688,22 +762,29 @@ class HaloAnalysis:
                             data_before,
                             snapid,
                             tree_id,
-                            first_assignment=1):
+                            first_assignment=1,
+                            show_infos=True,
+                            sort_by_prop='dFirstID'):
         """function access the progenitor information finds the correct (most massive) progenitor index to a given haloid"""
+        print('HERE 721! data_before:\n', data_before[['haloid','descIndex', 'predIndex', 'rootIndex', 'n_particles', 'mhalo', 'x_pos', 'y_pos', 'z_pos']])
 
         data = self.load_data_ROCKSTAR(self.path_basename,
                                        snapid,
                                        return_particle_info=False)
             
         data, data_before = self.assign_progenitor_indices(data, data_before, snapid, first_assignment=first_assignment)
-        
+        print('HERE 728! data_before:\n', data_before[['haloid','descIndex', 'predIndex', 'rootIndex', 'n_particles', 'mhalo', 'x_pos', 'y_pos', 'z_pos']])       
         tree_data=data[np.where(data['rootIndex']==tree_id)[:][0]]
-        tree_data[::-1].sort(order='haloid', axis=0)
+        if show_infos==True:
+            print('HERE 731! tree_data:\n',tree_data[['haloid','descIndex', 'predIndex', 'rootIndex', 'n_particles', 'mhalo', 'x_pos', 'y_pos', 'z_pos']])
+            
+        tree_data[::-1].sort(order=sort_by_prop, axis=0)
     
         import numpy.lib.recfunctions as rcfuncs
         tree_data = rcfuncs.append_fields([tree_data], ['Z'] , [np.zeros(tree_data.size,)], dtypes=['f4'], usemask=False)
         
-        tree_data['Z']=self.snapid_array[np.where(self.snapid_array['snapid']==snapid)]['z'][0]         
+        tree_data['Z']=self.snapid_array[np.where(self.snapid_array['snapid']==snapid)]['z'][0]
+                
                          
         return tree_data, tree_data['haloid'], data
  
@@ -747,14 +828,19 @@ class HaloAnalysis:
         
         print('--------------------------------------------------------------------------\n')            
 
-    def track_merger_tree(self, snapid_first, snapid_last, rootID, progIDs):
+    def track_merger_tree(self, snapid_first, snapid_last, rootID, progIDs, if_CT_data=True):
 
         data, myheader, mycols, myformat_string, mydt = ha_lib.create_data_array('merger_trees_ASCII')        
 
         for i, snapid in enumerate(range(snapid_first,snapid_last,1)):
-            
-            halo1 = self.myDataHalo[np.where((self.myDataHalo['descIndex']==progIDs[i]) & (self.myDataHalo['snapid']==snapid))[:][0]]
-            halo2 = self.myDataHalo[np.where((self.myDataHalo['haloid']==progIDs[i]) & (self.myDataHalo['snapid']==snapid+1))[:][0]]
+
+            if if_CT_data==True:
+                print('halo1:', progIDs[i], 'SN1:', snapid, 'halo2:', progIDs[i+1], 'SN2:', snapid+1)
+                halo1 = self.myDataHalo[np.where((self.myDataHalo['haloid']==progIDs[i]) & (self.myDataHalo['snapid']==snapid))[:][0]]
+                halo2 = self.myDataHalo[np.where((self.myDataHalo['haloid']==progIDs[i+1]) & (self.myDataHalo['snapid']==snapid+1))[:][0]]
+            else:
+                halo1 = self.myDataHalo[np.where((self.myDataHalo['descIndex']==progIDs[i]) & (self.myDataHalo['snapid']==snapid))[:][0]]
+                halo2 = self.myDataHalo[np.where((self.myDataHalo['haloid']==progIDs[i]) & (self.myDataHalo['snapid']==snapid+1))[:][0]]
             
             halo1[::-1].sort(order=['mhalo'], axis=0)
             halo2[::-1].sort(order=['mhalo'], axis=0) 
@@ -772,11 +858,12 @@ class HaloAnalysis:
                 else:
                     data = np.append(data, mydata, axis=0)
             except:
-                return False
-
+                print('SKIPPED!')
+                #return False
+        
         if len(progIDs)>0:         
             ha_lib.writeIntoFile(
-                       self.path_basename+'data_HH_treeID'+str(rootID)+'.txt',
+                       self.path_basename+self.output_filename_data_tree_basename+str(rootID)+'.txt',
                        data[mycols],
                        myheader='All halos fro Cholla 50Mpc 256 box from Bruno run 29/01/2021\n'+myheader,
                        mydelimiter='\t',
