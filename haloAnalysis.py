@@ -13,91 +13,40 @@ import pandas as pd
 import numpy.lib.recfunctions as rcfuncs
 from time import time
 
-#Enter what you want to analyse!
-#choose one of those:
- 
-task='load_entire_box' 
-task='compare_individual_halos'
-task='construct_main_prog_tree'
-task='crossmatch_consitent_IDs'
-task='walk_merger_trees'
-#task='get_halo_info'
-#task='get_merger_tree_stats'
-
 class HaloAnalysis:
     
-    def __init__ (self):
-        ##############################################################################################################
-        # User Configuration Space
+    def __init__ (self,
+                  pathname_dict,
+                  config_dict):
+        self.pathname_dict = pathname_dict
+        self.config_dict = config_dict
+        try:
+            self.snapid_array = ha_lib.df_to_sarray(pd.read_csv(self.pathname_dict['path_basename']+'snapidzred.txt', 
+                                               skiprows=2, 
+                                               names=['snapid', 'z', 'a', 't'], 
+                                               sep=' '))
+        except:
+            print('Could not read snapidzred.txt!')
         
-
-        """README:
-            -self.path_base_name looks for a folder 'halo_files' where halo catalogs according to the standard outputs
-            such as ROCKSTAR or GADGET are stored
-            -there is the need of file called 'snapidzred.txt', where the redshift and snapshot information are stored
-            in such a way, that the following pandas function
-            can read it.
-            -the total number of snapshot which contain halos might be handy to know!
-        """
-        #Customize your main path where the data can be found (don't forget to but the halo files in a folder called 'halo_files')
-        self.path_basename='/data/256_hydro_Cholla50Mpc_halo_tests/'
-        #self.path_basename='/home/dstoppac/anaconda/pro/data/Cholla256_50Mpc_halo_tests/'
-        #Test files provided by Bruno (01/29/2021) here
-        #self.path_basename='/data/groups/comp-astro/bruno/cosmo_sims/256_hydro_50Mpc_halo_tests/' 
-        
-        self.output_filename_merger_trees       = 'merger_trees_CTreeID79509.txt'
-        self.output_filename_data               = 'all_data_CTreeID79509.txt'
-        self.output_filename_data_tree_basename = 'data_treeID'
-        self.CT_merger_trees                    = 'Cholla256_50Mpc_halo_tests_trees_1.0.txt'
-
-        self.snapid_array = ha_lib.df_to_sarray(pd.read_csv(self.path_basename+'snapidzred.txt', 
-                                                   skiprows=2, 
-                                                   names=['snapid', 'z', 'a', 't'], 
-                                                   sep=' '))
-        
-        
-#        ha_lib.writeIntoFile(
-#                   self.path_basename+'DescScales.txt',
-#                   self.snapid_array[::-1][['snapid','a']],
-#                   myheader='',
-#                   mydelimiter=' ',
-#                   data_format='%i %0.3f')       
-#        
-#        exit()
-        #print(self.snapid_array)
-
-        #Simulation specific input!
-        #total number of snapshot present in this simulation
-        self.total_snaps_sim    = 194
-        self.n_files_snapshot   = 8
-     
-        
-
-
-        
-        ##############################################################################################################
-    
-    
+        print('\nInitiating HaloAnalysis pipeline ....\n++++++++++++++++++++++++++++++\n')
+  
     def MAIN(self, task):   
-        ##############################################################################################################
-        # User Configuration Space       
-        snapid                  = 104    #Snapshot number of the first snapshot to be read in
-        snapid_end              = 258    #Snapshot number of the last snapshot to be read in
-        
-        
-        treeID                  = 0     #treeID of the first merger tree to be read in
-        treeID_end              = 1   #treeID of the last merger tree to be read in
-        
-        
-        self.total_snaps2read   = snapid_end-snapid
-        #Choose property names which should be processed: The standard set of properties are: 'haloid','x_pos', 'y_pos', 'z_pos', 'mhalo', 'descIndex', 'n_particles','rvir'
-        self.myprops2read       = ['haloid','x_pos', 'y_pos', 'z_pos', 'mhalo', 'descIndex', 'n_particles','rvir']
                
+        def create_DescScales_file():
+            ha_lib.create_DescScales_file(self.pathname_dict['path_basename']+'halo_files/',
+                                          self.config_dict['snapid'],
+                                          self.config_dict['snapid_end'])
+        def create_snapidzred_file():
+            ha_lib.create_snapidzred_file(self.pathname_dict['path_basename'],
+                                          self.pathname_dict['path_orginal_data_hydro'],
+                                          self.config_dict['snapid'],
+                                          self.config_dict['snapid_end'])            
+        
         def load_entire_box():
             """load all snapshots and particle information between the snapid and the snapid_end"""
-            self.myDataHalo, self.particleIDs, self.halo_redshift_info = self.load_data_ROCKSTAR(self.path_basename,
-                                       snapid,
-                                       snapid_end+1)
+            self.myDataHalo, self.particleIDs, self.halo_redshift_info = self.load_data_ROCKSTAR(self.pathname_dict['path_basename'],
+                                                                                                 self.config_dict['snapid'],
+                                                                                                 self.config_dict['snapid_end']+1)
 
         def get_halo_info():
             """get infos of a certain halos at a certain snapshot
@@ -106,176 +55,312 @@ class HaloAnalysis:
                     snapid  snapshot number where the halo was found with haloid
                     
                 output:
-                    info of halo properties from self.myprops2read printed on the screen
+                    info of halo properties from self.config_dict[myprops2read] printed on the screen
             """
             load_entire_box()
-            self.get_halo_info(haloid=45, snapid=snapid)
+            self.get_halo_info(haloid=self.config_dict['haloid'], snapid=self.config_dict['snapid'])
             
 
         def compare_individual_halos(): 
             """compare properties and print percentage of particle they share (between snapshots or at one snapshot)
                 input:
+                ------------
+                    loads entire box!
                     haloid1     id of the first halo you want to compare
                     haloid2     id of the second halo you want to compare
                     snapid1     snapshot number of the first halo you want to compare
                     snapid2     snapshot number of the second halo you want to compare
                     
                 keywords:
+                 ------------                   
                     print_on_screen  default: False
-                                        info of halo properties from self.myprops2read printed on the screen
+                                        info of halo properties from self.config_dict[myprops2read] printed on the screen
                                         difference between the halo properties and particle content are calculate
                                         as absolute vales or as percentage where the properties of haloid2 (lower redshif) are compared
                                         to those of haloid1 (higher redshift)                   
                     
                 output:
+                ------------                    
                     structured array of one column which contains the information                  
 
                     
             """
             load_entire_box()
-            self.compare_halo_info(haloid1=3, haloid2=3, snapid1=snapid, snapid2=snapid+1, print_on_screen=True)        
+            self.compare_halo_info(haloid1=self.config_dict['haloid'], 
+                                   haloid2=self.config_dict['haloid2'], 
+                                   snapid1=self.config_dict['snapid'], 
+                                   snapid2=self.config_dict['snapid']+1, 
+                                   print_on_screen=True)        
 
-        def construct_main_prog_tree():
+        def construct_main_prog_tree_RS():
+            """Function constructs main progenitor tree form ROCKSTAR data using the 'DescID'
+                This approach does not use a tree builder to verify the connection between halos and fixes them!
+                BEWARE USING THIS FUNCTION!
+            """
             start = time() 
     
             data, merger_dict, first_z_dict = self.construct_main_prog_tree(haloid=45,
-                                                                         snapid=snapid,
-                                                                         snapid_end=snapid_end)
+                                                                            snapid=self.config_dict['snapid'],
+                                                                            snapid_end=self.config_dict['snapid_end'])
             
 
             print('Time until all halos tracked:', format((time()-start)/60.0/60.0, '0.2f'), 'h /', format((time()-start)/60.0, '0.2f'), 'min /', format((time()-start), '0.1f'), 'sec')
 
             ha_lib.writeIntoFile(
-                       self.path_basename+self.output_filename_data,
+                       self.pathname_dict['path_basename']+self.pathname_dict['output_filename_data'],
                        data[['haloid','descIndex', 'rootIndex', 'predIndex', 'mhalo', 'delta_mhalo', 'rvir', 'delta_rvir', 'x_pos', 'y_pos', 'z_pos', 'snapid', 'n_particles', 'npros']],
-                       myheader='All halos fro Cholla 50Mpc 256 box from Bruno run 29/01/2021\n'\
+                       myheader='Cholla'+str(self.config_dict['res'])+' '+str(self.config_dict['box_size_h-1Mpc'])+'h-1Mpc ROCKSTAR Main Branch all halos\n'\
                        +'(1) haloid (2) descIndex (3) rootIndex (4) predIndex (5) Mvir [h-1Msun] (6) delta_Mvir [h-1Msun] (7) Rvir [h-1kpc] (8) delt_Rvir [h-1kpc]'\
                        +'(9) X [h-1Mpc] (10) Y [h-1Mpc] (11) Z [h-1Mpc] (12) snapid (13) n_particles (14) n_progs',
                        mydelimiter='\t',
                        data_format='%i\t%i\t%i\t%i\t%0.6e\t%0.6e\t%0.4f\t%0.4f\t%0.4f\t%0.4f\t%0.4f\t%i\t%i\t%i')
 
-        def crossmatch_consitent_IDs():
-            
-            data_CT = ha_lc.load_ASCII_ConsitentTrees(self.path_basename+'/halo_files/trees/'+self.CT_merger_trees)
-            
-            #print(data_CT)
-            
-            #print(np.info(data_CT))
-            mydata_tree=data_CT[np.where(data_CT['rootIndex']==79509)[0][:]]           
 
-            mydata_tree[::-1].sort(order=['snapid'], axis=0)
-            mydata_tree.sort(order=['DFirstID'], axis=0)
-                      
-            test, index = np.unique(mydata_tree['snapid'], return_index=True)
-            mydata_tree_MB=mydata_tree[index]
+        def walk_merger_trees(generate_merger_tree_file=True):
+            """Function walks the merger trees of the main progenitor branches. Thereby each tree detected was stored in the file
+            self.pathname_dict['path_basename']+self.pathname_dict['output_filename_merger_trees'] and load to the structured array 'mytree_data',
+            or could be generated on the file if 'generate_merger_tree_file' is set to 'True'. Then the function 'self.generate_merger_tree_dict' is called.
             
-            #print(mydata_tree_MB[['snapid','haloid','descID','haloid_RS','DFirstID','mhalo']])
+            Each merger tree is stored in a dictionary 'mytree_dict' where the keys are the ascending number count of the total number of trees found
+            in the simulation box
             
-#            ha_lib.writeIntoFile(
-#                       self.path_basename+'MB_test.txt',
-#                       mydata_tree_MB[['snapid','haloid','descID','haloid_RS','DFirstID']],
-#                       myheader='',
-#                       mydelimiter='\t',
-#                       data_format='%i') 
-            
-            return mydata_tree_MB[['snapid','haloid_CT','descID','haloid','DFirstID']]
-            
-
-        def walk_merger_trees():
+            input:
+            ------------                
+                loads entire box
+                
+            keywords:
+            ------------                
+                generate_merger_tree_file  default False, meaning that if keyword is set to TRUE, the merger tree which should be tracked is greated on the fly otherwise
+                                           the a file is loaded which contrain that information --> self.pathname_dict['path_basename']+self.pathname_dict['output_filename_merger_trees']
+            output:
+            ------------ 
+                prints trackes merger trees into a file if  'generate_merger_tree_file' is set TRUE, checks how many merger trees have been correctly tracked.
+            """
             
             load_entire_box()
+            tree_indices=self.get_main_branch_CT(print_into_file=False)
+           
+            unique_rootIndices = np.unique(tree_indices['rootIndex'])
             
+            if generate_merger_tree_file==True:
+                #generate tree data from scratch
+                mytree_dict = self.generate_merger_tree_dict(unique_rootIndices, tree_indices)               
             
-            
-            #mytree_data = ha_lib.read_unshaped_txt(self.path_basename+self.output_filename_merger_trees, treeID_end+10, self.total_snaps_sim, delimiter=' ', comments='#', dtype=np.int32)
-             
-            mytree_data_MB = crossmatch_consitent_IDs()                                       
-            mytree_data = np.zeros((1,3+mytree_data_MB.size), dtype=np.int64)
-            
-            mytree_data[0,0]=104+0
-            mytree_data[0,1]=104+154
-            mytree_data[0,2]=79509
-            mytree_data[0, 3::]=mytree_data_MB['haloid']
-            
-            #print(mytree_data)
-            #exit()                                       
+            else:
+                #Load tree data
+                mytree_data = ha_lib.read_unshaped_txt(self.pathname_dict['path_basename']+self.pathname_dict['output_filename_merger_trees'], self.config_dict['treeID_end']+10, self.config_dict['total_snaps_sim'], delimiter=' ', comments='#', dtype=np.int32)
+                mytree_dict={}                                      
+                for i in range(0,self.config_dict['treeID_end']+1,1):
+                    if self.total_snaps2read>=mytree_data[i,1]-mytree_data[i,0]:
+                        end_snap=mytree_data[i,1]-mytree_data[i,0]
+                    else:
+                        end_snap=self.config_dict['total_snaps2read']
+                        
+                    print('i:', i, 'snapid_first:', mytree_data[i,0], 'snapid_last:', mytree_data[i,1], 'n_snaps2read:', end_snap, 'rootIndex:', mytree_data[i,2], 'progIDs:', mytree_data[i, 3:end_snap+3], 'check_sum:', len(mytree_data[i, 3:end_snap+3]))
+                       
+                    mytree_dict.update({i: (mytree_data[i,0], mytree_data[i,0]+end_snap, mytree_data[i, 3:end_snap+3])})                   
+                
+            #print(mytree_dict)
+                                              
             count_error=0
             failed_IDs=[]
-            for i in range(0,treeID_end+1,1):
-                if self.total_snaps2read>=mytree_data[i,1]-mytree_data[i,0]:
-                    end_snap=mytree_data[i,1]-mytree_data[i,0]
-                else:
-                    end_snap=self.total_snaps2read
 
-                print('i:', i, 'snapid_first:', mytree_data[i,0], 'snapid_last:', mytree_data[i,1], 'n_snaps2read:', end_snap, 'rootIndex:', mytree_data[i,2], 'progIDs:', mytree_data[i, 3:end_snap+3], 'check_sum:', len(mytree_data[i, 3:end_snap+3]))
+            
+            for index in unique_rootIndices:            
 
-                #exit()
-                #tree_structure=self.track_merger_tree(mytree_data[i,0], mytree_data[i,0]+end_snap, mytree_data[i,2], mytree_data[i, 3:end_snap+3])
-                tree_structure=self.track_merger_tree(mytree_data[i,0], mytree_data[i,0]+end_snap, mytree_data[i,2], mytree_data_MB['haloid'])
+                print('rootIndex:', index, 'snapid_first:', mytree_dict[index][0], 'snapid_last:', mytree_dict[index][1], 'n_snaps2read:', len(mytree_dict[index][2]), 'progIDs:',mytree_dict[index][2])
+                
+                first_sn_found  = mytree_dict[index][0]
+                last_sn_found   = mytree_dict[index][1] 
+                progIndices     = mytree_dict[index][2]
+
+                tree_structure=self.track_merger_tree(first_sn_found, last_sn_found, index, progIndices)
 
                 if tree_structure==False:
                     count_error+=1
-                    failed_IDs.extend([mytree_data[i,2]])
+                    failed_IDs.extend([index])
                 print('--> completed')
 
-            print('\n-------------------\nSUMMARY:\n', i-count_error+1, 'trees sucessfully walked / ', count_error, 'failed!', '\nfailed treeIDs are:\n', failed_IDs)
+            print('\n-------------------\nSUMMARY:\n', len(unique_rootIndices)-count_error+1, 'trees sucessfully walked / ', count_error, 'failed!', '\nfailed treeIDs are:\n', failed_IDs)      
 
-        def get_merger_tree_stats(print_into_file=True):
 
-            tree_data=self.load_data_merger_trees(treeID,treeID_end,file_basename='data')
-            #print(np.info(tree_data))
-            merger_tree_stats, myheader, mycols, myformat_string, mydt = ha_lib.create_data_array('stats_perc_bucket')
-            
-            dt_basic = ha_lc.get_dtype_sarray('stats_basic_bucket')
-            #print(dt_basic)                  
-            myprops=ha_lib.get_props_for_stats_calc(dt_basic, input_is_dtype=True)       
-            #print(myprops)
-            #exit()
-            
-            for i, snap in enumerate(range(snapid,snapid_end,1)):
+        def load_ascii_file():
+            """load a random text file in ascii code into a pandas data frame and then transform it to a structured array. Get the data types
+                from a dictionary (dt) if ascii file was also reated by PyLysis
+                    
+            output:
+            ------------                   
+                structured array with data types from dt which can be easily transfered to jupyter-lab!
+            """
+
+            def get_col_names(name):
                 
-                data_stats = self.calc_statistics(tree_data, myprops, sel_name='snapid1', sel_value=snap, dt=mydt)                
-
-                data_stats['snapid'] = snap
-                data_stats['z']      = self.snapid_array[np.where(self.snapid_array['snapid']==snap)[:][0]]['z']
+                dt = ha_lc.get_dtype_sarray(name)
+        
+                return [k[0] for k in dt]
+            
                 
-                if i==0:
-                    merger_tree_stats = data_stats
-                else:                                     
-                    merger_tree_stats = np.append(merger_tree_stats, data_stats, axis=0)
+            def load_file(filename,col_names):
+                
+                return ha_lib.df_to_sarray(pd.read_csv(filename,
+                                           skiprows=2, 
+                                           names=col_names,
+                                           sep='\t'))            
+            
+            def load_CT():            
+                
+                return ha_lc.load_ASCII_ConsitentTrees(self.pathname_dict['CT_merger_trees'])
+
+            def load_CT_MB():            
+                #load all main branches of all rootIndices
+                return ha_lc.load_ASCII_ConsitentTrees(self.pathname_dict['CT_merger_trees'])            
+            
+                
+            def load_merger_trees(filename):
+                                
+                return load_file(filename,get_col_names('merger_trees_ASCII'))
+               
+               
+            def load_stats(filename):
+                
+                return load_file(filename,get_col_names('stats_perc_bucket'))            
+
+
+            def create_dict_unique_IDs(data,prop):
+                """create a dictionary where the keys are unique IDs of a certain property (e.g. rootIndex, subTreeID, haloid etc.)
+                
+                input:
+                ------------                   
+                    data:   a structured data array
+                    prop:   name of the index the data file should be filtered by and put into a dictionary
+                    
+                output:
+                ------------                   
+                    data_dict: dictionary with the unique IDs from prop as keys                     
+                """
+                data_dict={}
+                unique_IDs, index = np.unique(data[prop], return_index=True)
+                
+                #That line perserves the order in data when the unique indices are found, otherwise, the unique_IDs are sorted (handy e.g. if
+                #first 10 most massive main branches should be found etc.)
+                unique_IDs=unique_IDs[np.argsort(index)] 
+
+                #mask = np.asarray([random.sample(range(0,unique_IDs.size,1),3)])
+   
+                #unique_IDs=unique_IDs[mask[:][0]]
+                print('Arrange data into a dictionary with unique IDs by -->', prop, 'total amount of unique IDs is:', len(unique_IDs))
+                
+                for index in unique_IDs[0:3]: 
+                    print('index:', index)                                       
+                    data_tree = data[np.where(data[prop]==index)[:][0]]
+                    data_tree.sort(order='a', axis=0)
+                    
+                    #print(data_tree[['rootIndex','a','haloid_CT','mhalo']])
+                    data_dict.update({index: data_tree})
+                    
+                return data_dict
+          
+            key='CT'
+            filenames = ['data_treeID79509','data_comparision_MM_treeID3', 'data_comparision_MM_treeID6', 'data_comparision_treeID54', 'data_comparision_treeID231']   #key: MT --> main branch data standard merger trees       
+            filenames = ['308328'] #rootIDs   use key:else
+            filenames = [self.pathname_dict['output_filename_merger_trees']] #load all main branches   use key:MB
+            #filenames = ['509', '561', '604', '619','622']               
+            #filenames = ['Cholla256_50Mpc_CT-MB_stats'] #key: stats --> CT main branch stats
+            #filenames = ['halo_files/trees/tree_0_0_0.dat'] #key: CT --> CT original files
+            filenames = ['halo_files/trees/Cholla512_50Mpc_CT-v1.01_bin2'] #key: CT --> CT original files or and other file in this format
+            
+            for i, fname in enumerate(filenames):
+                #print('i:', i, 'fname:', fname)
+ 
+                if key=='CT':
+                    print('loading Consitent tree file:', fname)
+                    data = load_CT()
+                    
+                elif key=='MT':
+                    print('loading standard merger tree file:', fname)
+                    data=load_merger_trees(fname)
+                    
+                elif key=='stats':
+                    print('loading stats file:', fname)
+                    data=load_stats(fname)
+
+                elif key=='MB':
+                    print('loading all main progenitor trees from file:', fname)
+                    
+                    data = load_file(fname,get_col_names('ConsistentTrees_basic_ASCII'))
+                    #Sort by a certain properties e.g. if the first 10 most massive rooIndex-halos should be found
+                    data[::-1].sort(order=['mhalo'], axis=0)
+                    #print(data[['rootIndex', 'mhalo']][0:100])
+                    data_dict=create_dict_unique_IDs(data,'rootIndex')                  
+                   
+                else:
+                    fname=self.pathname_dict['output_filename_merger_trees'][:-4]+'_rootID'+fname+'.txt'
+                    print('loading ...', fname)
+                    
+                    data_dict=create_dict_unique_IDs(load_file(fname,get_col_names('ConsistentTrees_basic_ASCII')),'subTreeID')
+                    
+            #print('data_dict:', data_dict)
+
+            return data_dict
+                  
+            
+        def utilise():
+            """playground for anykind of manipulating and arranging data"""
+
+            #data=ha_lc.load_ASCII_ConsitentTrees(self.pathname_dict['CT_merger_trees'])
     
-                        
-            #print(merger_tree_stats)
-            #print(np.info(merger_tree_stats))
-            if print_into_file==True:
-                ha_lib.writeIntoFile(
-                       self.path_basename+self.output_filename_merger_trees[::-3]+'_stats.txt',
-                       merger_tree_stats[mycols],
-                       myheader='statistics of properties found in halos from Cholla 50Mpc 256 box from Bruno run 29/01/2021\n'+myheader,
-                       mydelimiter='\t',
-                       data_format=myformat_string)
+            #calculate histogramm
+            #snap_list = [154, 150, 140, 130, 100, 50, 10] #256_hydro
+            #snap_list = [169,130,106,90,74,62] #512_hydro
+    
+            #self.calc_histo(data, 'mhalo_200c', 'h-1Msun', snap_list, 'HMF')
             
+            ######################################################################################################
+
+
+            #Get tree statistics
+                 
+            tree_data=self.filter_trees(snapid=169,
+                                        create_bins=True,
+                                        prop='mhalo',
+                                        bins=[0,1e11,1e12,1e13])
+                
+
+            #Load treedata f
+#            tree_data=self.load_data_merger_trees_from_text(self.config_dict['rootID'],self.config_dict['rootID_end'],file_basename='/Cholla'+str(self.config_dict['res'])+'_'+str(self.config_dict['treeID'])+'Mpc_CT-MB/data_CT')
+#            
+            for item in tree_data.keys():
+                print('item:', item, tree_data[item])
+#                
+#            self.get_merger_tree_stats(tree_data,
+#                                       filename_endfix='_bin'+str(item))
+
+
+               
 
 
         def caseSwitcher(task):
             choose = {
-                'load_entire_box':          load_entire_box,
-                'compare_individual_halos': compare_individual_halos,
-                'construct_main_prog_tree': construct_main_prog_tree,                
-                'walk_merger_trees':        walk_merger_trees,
-                'get_halo_info':            get_halo_info,
-                'crossmatch_consitent_IDs': crossmatch_consitent_IDs               
-                }
+                    'compare_individual_halos':     compare_individual_halos,
+                    'construct_main_prog_tree_RS':  construct_main_prog_tree_RS,
+                    'create_DescScales_file':       create_DescScales_file,
+                    'create_snapidzred_file':       create_snapidzred_file,                    
+                    'get_halo_info':                get_halo_info,
+                    'load_ascii_file':              load_ascii_file,
+                    'load_entire_box':              load_entire_box,       
+                    'walk_merger_trees':            walk_merger_trees,
+                    'utilise':                      utilise
+                    }
         
             func = choose.get(task)
             
             return func()
     
-        caseSwitcher(task)
+        return caseSwitcher(task)
     
         
         ##############################################################################################################
-    
+      
     def assign_progenitor_indices(self,
                                   data_RS_now,
                                   data_RS_before,
@@ -381,6 +466,78 @@ class HaloAnalysis:
         
         return 100.0/prop1*prop2-100.0
 
+    def calc_histo(self,
+                   data,
+                   prop,
+                   unit,
+                   snap_list,
+                   histo_name):
+        """caculates histogram with 'calcFastHisto' function
+        
+        input:
+            prop    galaxy/halo property the histogram should be calculated (e.g. mhalo_200c, mstar, sfr)
+            unit    the current unit of the property the histogram should be calculated (e.g. 'h-1Msun', 'yr-1Msun')
+            snap_list   list of snapshot number the histogram should be calculated, they will be converted to redshifts
+            histo_name  preffix of the histogram filename e.g. 'HMF' for 'halo mass function', 'SFRF' for star formation rate function etc.
+            
+        output:
+            histogram is stored into 'self.pathname_dict['path_basename']+'histos/[histo_name]_CHOLLA_[self.config_dict['res']_self.config_dict['box_size_h-1Mpc']Mpc_z_[redshift]_[prop].txt'
+        """
+
+        for snap in snap_list:
+            data_histo=data[np.where(data['snapid']==snap-self.config_dict['snapid_CT_offset'])[:][0]]
+            redshift=format(ha_lib.expfactor_to_redshift(data_histo['a'][0]), '0.2f')
+            print('snap:', snap, 'CT-snap:', snap-self.config_dict['snapid_CT_offset'], 'a:', data_histo['a'][0], 'z:', redshift, 'nhalos:', data_histo.size)
+            ha_lib.calcFastHisto(data_histo[prop],\
+                                 self.pathname_dict['path_basename']+'histos/'+histo_name+'_Cholla'+str(self.config_dict['res'])+'_'+str(self.config_dict['box_size_h-1Mpc'])+'Mpc_z_'+str(redshift)+'_'+prop+'.txt',\
+                                 prop, unit, \
+                                 self.config_dict['box_size_h-1Mpc'], \
+                                 comment='Cholla-'+str(self.config_dict['res'])+' '+str(self.config_dict['box_size_h-1Mpc'])+'h-1Mpc all halos z='+str(redshift)+' nhalos: '+str(data_histo.size))
+
+    def calc_MAH(self,
+                 data):
+        
+        return data
+
+
+    def give_stats_info(self,
+                         data,
+                         props):
+        """The method return info such as max/min-values, median/mean and error estimation of data from a structred array
+        
+        input:
+        ------------            
+            data    a structured array
+            props   a list of properties which should be displayes
+            
+        output:
+        ------------            
+            the statistics is printed on screen
+        """
+        
+        print('##############################################\n')              
+        for prop in props:
+            unit, myformat = ha_lib.find_unit(prop)           
+            print(('prop').ljust(25), 'median 10th / 90th\tmax/min\t[unit]\n-----------------------------------------------------------------\n')
+            print((prop).ljust(25),end='')
+            if prop.find('perc')==-1 and prop.find('n_')==-1 and prop.find('pos')==-1 and prop.find('rvir')==-1:
+                print("{0:.2f}".format(np.log10(np.nanmedian(data[prop]))),'\t',\
+                      "{0:.2f}".format(np.log10(np.nanmedian(data[prop]))-np.log10(np.nanpercentile(data[prop], 10))),'/',\
+                      "{0:.2f}".format(np.log10(np.nanpercentile(data[prop], 90))-np.log10(np.nanmedian(data[prop]))),'\t',\
+                      "{0:.2f}".format(min(np.log10(data[prop]))),'/',\
+                      "{0:.2f}".format(max(np.log10(data[prop]))),\
+                      'log('+unit+')')
+                                      
+            else:
+                print("{0:.2f}".format(np.nanmedian(data[prop])),'\t',\
+                      "{0:.2f}".format(np.nanmedian(data[prop])-np.nanpercentile(data[prop], 10)),'/',\
+                      "{0:.2f}".format(np.nanpercentile(data[prop], 90)-np.nanmedian(data[prop])),\
+                      "{0:.2f}".format(min(data[prop])),\
+                      "{0:.2f}".format(max(data[prop])),'\t',\
+                      unit)   
+        
+        print('##############################################\n')
+              
     def calc_statistics(self,
                         data,
                         props,
@@ -538,7 +695,212 @@ class HaloAnalysis:
         """   
     
         return data
-          
+
+    def filter_trees(self,
+                     snapid=0,
+                     create_bins=False,
+                     prop='mhalo',
+                     bins=[],
+                     sample_endfix=''):
+        """functions helps in finding, arranging, and storing trees and main branches of those trees into file and returns a dictionary of all trees processes
+        where the keys are the top-node halo IDs (rootIndex) at a certain snapshot chosen
+        
+        There is the possibility to select halos in certain bins and trac the trees for that sample of halos seperately. Set keyword 'bin_data' to 'True' for that.
+        
+        keywords:
+        ------------
+            snapid         if subsamples should selected, then snapid sets the snapshot number where the top-node halos should be selected
+            create_bins    default is 'False', set 'True' to select subsamples of a certain property with funtion: self.find_subsample()
+            prop           property which should be binned
+            bins           list of bin edges
+            sample_endfix  default is '' string which specify the filename to be printed
+            
+        output:
+        ------------    
+            tree_data_bin   dictionary of structured arrays        
+        
+        """
+        
+        #load a certain Consitent-tree file
+        data = ha_lc.load_ASCII_ConsitentTrees(self.pathname_dict['CT_merger_trees'])
+       
+        tree_bin_dict={}
+        if create_bins==True:
+            #choose a subsample if needed
+            data_sample=data[np.where(data['snapid']==snapid-self.config_dict['snapid_CT_offset'])[:][0]]
+            
+            #bin the data in the subsample
+            data_bin = self.find_subsample(data_sample,
+                                           prop,
+                                           bins)              
+            
+            #get merger trees for halos in certain bins
+            for k, mybin in enumerate(data_bin.keys()):
+                print('mybin:', mybin, 'unique IDs: ',end='')
+                unique_mysample_rootIDs, index, count = np.unique(data_bin[mybin], return_index=True, return_counts=True)
+                print(len(unique_mysample_rootIDs),'\n ...processing!')
+
+                
+                #Get all tree branches of a certain bin
+                tree_data_bin = self.get_main_branch_CT(data,
+                                                 rootIndex=unique_mysample_rootIDs,
+                                                 print_rootIDs_sep=True,
+                                                 print_all_trees=True,
+                                                 print_main_branch=True,
+                                                 sample_endfix='_bin'+str(k))
+                
+                
+                
+                tree_bin_dict.update({k: tree_data_bin})
+                
+            tree_data=tree_bin_dict
+
+        else:
+            
+            unique_mysample_rootIDs, index, count = np.unique(data['rootIndex'], return_index=True, return_counts=True)
+
+            #Get all tree branches
+            tree_data = self.get_main_branch_CT(data,
+                                             rootIndex=[],
+                                             print_rootIDs_sep=True,
+                                             print_all_trees=True,
+                                             print_main_branch=True,
+                                             sample_endfix=sample_endfix)
+                
+
+        return tree_data
+
+    def find_subsample(self,
+                       data,
+                       prop,
+                       bins,
+                       all_last_gt=True):
+        """function selects top-node halo ID ('rootIndex') from a structured array where some condition given by the list bins=[] by certain property 'prop' (e.g. mhalo) 
+        is fullfilled. The IDs are stored into a dictionary with the keys corresponding to the accending bin number (starting with zero).
+
+        input:
+        ------------    
+            data    structured array
+            prop    the property of a halo which should be used to for binning (e.g. mhalo)
+            bins    a list of values which should be serve a bin edges e.g. [1e11,1e12,1e13,1e14]
+            
+        keywords:
+        ------------    
+            all_last_gt     default: True, means that an additional bin is created selecting all IDs where the halos properties exceeds the value of the last bin '>'
+        
+        output:
+        ------------    
+            dict_bin    a dictionary with the bin-numbers as keys e.g. dict_bin={0: [ID1, ID1 ... IDn]}
+        
+        """
+        dict_bin={}
+        print('create', len(bins), end='')
+        if all_last_gt==True:
+            print('+1',end='')
+
+        print(' bins with halo property:', prop,'\n+++++++++++++++++++++++++++++++++++++')
+            
+        for i, mybin in enumerate(bins[:-1]):
+            print('bin'+str(i)+': >='+str(mybin)+' & <'+str(bins[i+1]), '\tn_halos: ', end='')
+            dict_bin.update({i: data[np.where((data[prop]>=float(mybin)) & (data[prop]<float(bins[i+1])))[:][0]]['rootIndex']})
+            print(len(dict_bin[i]))
+    
+        if all_last_gt==True:
+            print('bin'+str(i+1)+': >'+str(bins[-1]),'\t\tn_halos: ', end='')
+            dict_bin.update({i+1: data[np.where(data[prop]>=float(bins[-1]))[:][0]]['rootIndex']})
+            print(len(dict_bin[i+1]))
+        
+        return dict_bin
+ 
+
+    def generate_merger_tree_dict(self,
+                                  unique_indices,
+                                  data):
+        """Function stores all halos on the main branch with there snapids of first and last occurence of a certain tree root to a dictionary. The
+        keys of the dictionary are the 'rootIndex'
+        
+        input:
+        ------------                
+            unique_indices  list of the unique indices of the rootIds which should be found
+            data            a certain catalog
+            
+        output:
+        ------------                
+            merger_tree_dict    a dictionary with the 'rootIndex' as key which stores {roodIndex: (first snapid,last snapid, all haloid on the main brainch)}
+        """
+        merger_tree_dict={}
+        
+        for rootID in unique_indices:
+
+            data_tree = data[np.where(data['rootIndex']==rootID)[:][0]]                
+            data_tree.sort(order=['snapid'], axis=0)
+            
+            merger_tree_dict.update({rootID: (data_tree['snapid'][0], data_tree['snapid'][-1], data_tree['haloid'])})
+        
+        return merger_tree_dict         
+
+    def get_merger_tree_stats(self,
+                              tree_data,
+                              print_into_file=True,
+                              filename_endfix=''):
+        """Function provides statistics such as the median value of the population of halos of a certain halo property
+        within uncertainties for each snapshot and prints it to a file
+        
+        input:
+        ------------
+            tree_data            structured array of a certain tree
+            
+        keywords:
+        ------------
+             print_into_file     default is TRUE, prints statistics of all halo in a merger tree into a file
+             filename_endfix     specify the filename to be printed
+             
+        output:
+            
+            merger_tree_stats   a certain predefined array of statistic properties of a merger tree or subsample of trees at each snapshot number 
+        """              
+            
+        
+        merger_tree_stats, myheader, mycols, myformat_string, mydt = ha_lib.create_data_array('stats_perc_bucket')
+        
+        dt_basic = ha_lc.get_dtype_sarray('stats_basic_bucket')
+              
+        myprops=ha_lib.get_props_for_stats_calc(dt_basic, input_is_dtype=True)       
+
+        snapid = min(tree_data['snapid'])
+        snapid_end = max(tree_data['snapid'])
+        
+        print('snapid:', snapid, 'snapid_end:', snapid_end)
+        
+        for i, snap in enumerate(range(snapid,snapid_end+1,1)):
+            
+            data_stats = self.calc_statistics(tree_data, myprops, sel_name='snapid', sel_value=snap, dt=mydt)                
+
+            data_stats['snapid'] = snap
+            data_stats['z']      = self.snapid_array[np.where(self.snapid_array['snapid']==snap)[:][0]]['z']
+            
+            if i==0:
+                merger_tree_stats = data_stats
+            else:                                     
+                merger_tree_stats = np.append(merger_tree_stats, data_stats, axis=0)
+
+  
+        #print(merger_tree_stats)
+        #print(np.info(merger_tree_stats))               
+        if print_into_file==True:
+            ha_lib.writeIntoFile(
+                   self.pathname_dict['output_filename_merger_trees'][:-4]+filename_endfix+'_stats.txt',
+                   merger_tree_stats[mycols],
+                   myheader=self.config_dict['simulation_name']+' '+\
+                           str(self.config_dict['box_size_h-1Mpc'])+'h-1Mpc, '\
+                           'halo finder: '+self.config_dict['halo_finder']+','\
+                           'tree builder'+self.config_dict['tree_builder']+\
+                           ' statistics\n'+myheader,
+                   mydelimiter='\t',
+                   data_format=myformat_string)
+        
+        return merger_tree_stats
+
 
     def get_halo_info(self,
                        haloid,
@@ -554,6 +916,122 @@ class HaloAnalysis:
         for i in range(0,props.size,1):
             self.print_on_screen(props[i], z, n_particles)
 
+    def get_main_branch_CT(self,
+                           data,
+                           rootIndex=[],
+                           print_all_trees=True,
+                           print_rootIDs_sep=False,
+                           print_main_branch=False,
+                           sample_endfix=''):
+        """Function uses Consistent-Tree data run on ROCKSTAR halo catalogs and gets the main branches for each top node halo by using the
+        a sorting alorithm because the main branch is loacted on the lowest 'DFirstIDs'
+        
+        input:
+        ------------                
+            data        structured array (e.g. load CONSITENT TREES standard files 'self.pathname_dict['CT_merger_trees']' and plug into function)
+            rootIndex   list of unique indices, default is [], if default then all unique top-node root indices are going to be processed
+            
+        keywords:
+        ------------                
+            print_all_trees     default=True --> the halos are stored to a file with filname default: 'self.pathname_dict['path_basename']+CHOLLA_[self.config_dict['res']]_[self.config_dict['box_size_h-1Mpc']]Mpc_MB-CT+[endfix].txt'
+            print_rootIDs_sep   default=False --> each tree with the top-node halo ID 'rootIndex' is going to be printed in a seperate text-file with ending '.txt',
+                                 the file name can be customized with 'sample_endfix' or/and 'filename_endfix, same name convention as 'print_all_trees'
+            print_main_branch   default=False --> each main proginitor tree with the top-node halo ID 'rootIndex' is going to be printed in a seperate text-file with ending '.txt',
+                                 the file name can be customized with 'sample_endfix' or/and 'filename_endfix,  same name convention as 'print_all_trees'                                  
+            sample_endfix       default='' --> endfix on filename before '.txt'
+
+        output:
+        ------------            
+            data_CT_MB      structured array
+
+        """
+
+        if rootIndex!=[]:
+            #if only certain 'rootIndex' are interesting
+            unique_rootIndices, index1, index2 = np.intersect1d(data['rootIndex'], rootIndex, return_indices=True)
+            #print statistics of the subsample on screen
+            self.give_stats_info(data[index1],props=['mhalo'])
+            #print(len(unique_rootIndices), unique_rootIndices)
+        else:
+            #Find unique rootIndicies (top node of the merger tree)
+            unique_rootIndices, index = np.unique(data['rootIndex'], return_index=True)              
+        
+        data.sort(order=['rootIndex','DFirstID'], axis=0)
+        #print('sort by rootIndex & Last main leaf DFirst ID desc -->', data[['snapid','DFirstID', 'LastMLDFirstID', 'rootIndex']][0:10])              
+
+        data = rcfuncs.append_fields([data], 
+                                    ['subTreeID'], 
+                                    [np.zeros(data.size,)], 
+                                    dtypes=['i8'], 
+                                    usemask=False)
+
+       
+        for a,rootID in enumerate(unique_rootIndices):
+            
+            data_rootID=data[np.where(data['rootIndex']==rootID)[0][:]]
+
+            unique_mainLeafIDIndices, index = np.unique(data_rootID['LastMLDFirstID'], return_index=True)
+            for k, mainLeafID in enumerate(unique_mainLeafIDIndices):                            
+                #print('subtree:', k, 'mailLeafID:', mainLeafID)
+                data_subtree=data_rootID[np.where(data_rootID['LastMLDFirstID']==mainLeafID)[0][:]]
+
+                data_subtree['subTreeID']=k
+                #print(data_subtree[['snapid','DFirstID', 'LastMLDFirstID', 'rootIndex', 'subTreeID']])
+                
+                if k==0:
+                    data_tree = data_subtree
+                else:                                     
+                    data_tree = np.append(data_tree, data_subtree, axis=0)                 
+              
+            filename_endfix='rootID'+str(rootID)
+            data_tree['snapid']+=self.config_dict['snapid_CT_offset']
+            if print_rootIDs_sep==True:
+                #write main branch of each rootIndex into file
+                ha_lib.writeIntoFile(
+                           self.pathname_dict['output_filename_merger_trees'][:-4]+sample_endfix+'_'+filename_endfix+'.txt',
+                           data_tree[['snapid', 'a', 'a_desc', 'a_lastMM', 'rootIndex','descID','DFirstID', 'LastDFirstID', 'LastMLDFirstID','haloid_CT', 'haloid',\
+                                    'x_pos', 'y_pos', 'z_pos', 'mhalo', 'vmax', 'rhalf_mass', 'rvir', 'T_U', 'subTreeID']],
+                           myheader='snapid(1) a(2) a_desc(3) a_lastMM(4) rootIndex(5) descID(6) DFirstID(7) LastDFirstID(8) LastMLDFirstID(9) haloid_CT(10) orignal_haloid_RS(11) '\
+                                     'x_pos(12) y_pos(13) z_pos(14) mhalo(15) vmax(16) rhalf_mass(17) rvir(18) T_U(19) subTreeID(20)',
+                           mydelimiter='\t',
+                           data_format='%i\t%0.5f\t%0.5f\t%0.5f\t%i\t%i\t%i\t%i\t%i\t%i\t%i\t%0.5f\t%0.5f\t%0.5f\t%0.8e\t%0.8e\t%0.5f\t%0.5f\t%0.8e\t%i') 
+
+            if a==0:
+                data_output = data_tree
+            else:                                     
+                data_output = np.append(data_output, data_tree, axis=0) 
+
+        if print_all_trees==True:
+
+            ha_lib.writeIntoFile(
+                               self.pathname_dict['output_filename_merger_trees'][:-4]+sample_endfix+'.txt',
+                               data_output[['snapid', 'a', 'a_desc', 'a_lastMM', 'rootIndex','descID','DFirstID', 'LastDFirstID', 'LastMLDFirstID','haloid_CT', 'haloid',\
+                                        'x_pos', 'y_pos', 'z_pos', 'mhalo', 'vmax', 'rhalf_mass', 'rvir', 'T_U', 'subTreeID']],
+                               myheader='snapid(1) a(2) a_desc(3) a_lastMM(4) rootIndex(5) descID(6) DFirstID(7) LastDFirstID(8) LastMLDFirstID(9) haloid_CT(10) orignal_haloid_RS(11) '\
+                                         'x_pos(12) y_pos(13) z_pos(14) mhalo(15) vmax(16) rhalf_mass(17) rvir(18) T_U(19) subTreeID(20)',
+                               mydelimiter='\t',
+                               data_format='%i\t%0.5f\t%0.5f\t%0.5f\t%i\t%i\t%i\t%i\t%i\t%i\t%i\t%0.5f\t%0.5f\t%0.5f\t%0.8e\t%0.8e\t%0.5f\t%0.5f\t%0.8e\t%i')
+
+
+
+        
+        if print_main_branch==True:
+            data_output_MB=data_output[np.where(data_output['subTreeID']==0)[0][:]]
+            #wirte alle main branches into file
+            ha_lib.writeIntoFile(
+                               self.pathname_dict['output_filename_merger_trees'][:-4]+sample_endfix+'_MB.txt',
+                               data_output_MB[['snapid', 'a', 'a_desc', 'a_lastMM', 'rootIndex','descID','DFirstID', 'LastDFirstID', 'LastMLDFirstID','haloid_CT', 'haloid',\
+                                        'x_pos', 'y_pos', 'z_pos', 'mhalo', 'vmax', 'rhalf_mass', 'rvir', 'T_U', 'subTreeID']],
+                               myheader='snapid(1) a(2) a_desc(3) a_lastMM(4) rootIndex(5) descID(6) DFirstID(7) LastDFirstID(8) LastMLDFirstID(9) haloid_CT(10) orignal_haloid_RS(11) '\
+                                         'x_pos(12) y_pos(13) z_pos(14) mhalo(15) vmax(16) rhalf_mass(17) rvir(18) T_U(19) subTreeID(20)',
+                               mydelimiter='\t',
+                               data_format='%i\t%0.5f\t%0.5f\t%0.5f\t%i\t%i\t%i\t%i\t%i\t%i\t%i\t%0.5f\t%0.5f\t%0.5f\t%0.8e\t%0.8e\t%0.5f\t%0.5f\t%0.8e\t%i')
+
+            
+                       
+        return data_output
+
+
 
     def load_data_GADGET(self,
                           path, 
@@ -565,22 +1043,22 @@ class HaloAnalysis:
         """
         exit()
 
-    def load_data_merger_trees(self,
-                               treeID,
-                               treeID_end,
-                               file_basename):
+    def load_data_merger_trees_from_text(self,
+                                        rootID,
+                                        rootID_end,
+                                        file_basename):
         """Function reads and returns the merger trees catalog from ASCII file for a given filename and between certain tree ID numbers"""        
         
         merger_tree_data, myheader, mycols, myformat_string, mydt = ha_lib.create_data_array('merger_trees_ASCII')
         
-        for i, tree_id in enumerate(range(treeID,treeID_end,1)):
+        for i, tree_id in enumerate(range(rootID,rootID_end,1)):
             try:
-                data = ha_lib.df_to_sarray(pd.read_csv(self.path_basename+file_basename+'_treeID'+str(tree_id)+'.txt', 
+                data = ha_lib.df_to_sarray(pd.read_csv(self.pathname_dict['path_basename']+file_basename+'_rootID'+str(tree_id)+'.txt', 
                                                        skiprows=2,
                                                        names=mycols,
                                                        sep='\t'))                    
             except:
-                print('data for merger tree with treeID:', tree_id, 'not available! --> SKIPPED!')
+                print('data for merger tree with rootID:', rootID, 'not available! --> SKIPPED!')
             
             if i==0:
                 merger_tree_data = data
@@ -611,8 +1089,8 @@ class HaloAnalysis:
                                                                                  snapid=snapid, 
                                                                                  filename_prefix='halos_'+str(snapid)+'.', 
                                                                                  filename_suffix='.bin', 
-                                                                                 n_files=self.n_files_snapshot,
-                                                                                 myprops=self.myprops2read)
+                                                                                 n_files=self.config_dict['n_files_snapshot'],
+                                                                                 myprops=self.config_dict['myprops2read'])
     
             haloid_redshift_info.update({snapid: {'redshift': redshift, 'haloid': data_subfile['haloid']}, 'halo_info': particle_snapid_info})
             particleIDs_haloid_snapid_dict.update({snapid: particleIDs})
@@ -647,8 +1125,7 @@ class HaloAnalysis:
         
         output:
         ===============
-            returned by the function
-            data    structured array of all halo properties of all halo found in the box
+            data            structured array of all halo properties of all halo found in the box
             merger_dict     dictionary of the merger tree of each unique tree ID (rootIndex)
             z_first_app     dictionary of the first appearance of 
             
@@ -674,7 +1151,7 @@ class HaloAnalysis:
         else:
             mysnap_array=self.snapid_array
         
-        data_before = self.load_data_ROCKSTAR(self.path_basename,
+        data_before = self.load_data_ROCKSTAR(self.pathname_dict['path_basename'],
                                               np.sort(mysnap_array['snapid'])[0],
                                               return_particle_info=False)
         if haloid!=None:
@@ -683,7 +1160,7 @@ class HaloAnalysis:
 
         data_before, data_dummy = self.assign_progenitor_indices(data_before, data_before, np.sort(mysnap_array['snapid'])[0], first_assignment=0)
         print(data_before[['haloid','descIndex', 'rootIndex', 'predIndex', 'mhalo', 'delta_mhalo', 'rvir', 'delta_rvir', 'x_pos', 'y_pos', 'z_pos', 'snapid', 'n_particles', 'npros']], '\n', data_dummy)
-        exit()
+
         for tree_id in tree_list2analyse:
             progs_tree=[]
             print('tree_id:', tree_id, '/', len(tree_list2analyse)-1, '... processing!')
@@ -698,7 +1175,7 @@ class HaloAnalysis:
                 else:
                     data = np.append(data, data_before, axis=0)                
                 print('BEFORE desc indentification:\n', data_before[['haloid','descIndex', 'rootIndex', 'n_particles', 'mhalo', 'x_pos', 'y_pos', 'z_pos']])
-                new_data, progID, data_before = self.get_progenitor_data(self.path_basename,
+                new_data, progID, data_before = self.get_progenitor_data(self.pathname_dict['path_basename'],
                                                                          data_before,
                                                                          snapid,
                                                                          tree_id,
@@ -734,14 +1211,14 @@ class HaloAnalysis:
                 z_last_app.update({tree_id:snap_last_app})                
    
         if print_merger_tree2file==True: 
-            filename_trees=self.path_basename+self.output_filename_merger_trees     
+            filename_trees=self.pathname_dict['path_basename']+'merger_tree_tracks.txt'    
 
             for tree_id in merger_dict.keys():
                 if tree_id==tree_list2analyse[0]:
                     ha_lib.writeIntoFile(
                                filename_trees,
                                [str(z_first_app[tree_id])+' '+str(z_last_app[tree_id])+' '+str(tree_id)+' '+" ".join(str(item) for item in merger_dict[tree_id][1:])],
-                               myheader=str(self.path_basename)+'Main progenitor merger trees as haloid (ID in the orginal ROCKSTAR files)\n'\
+                               myheader=str(self.pathname_dict['path_basename'])+'Main progenitor merger trees as haloid (ID in the orginal ROCKSTAR files)\n'\
                                             +'(1) snapid of first appearance of this tree with ID (2) unique ID of the merger tree (descendent) (3)-(n) progenitors',
                                append_mytext=False,
                                data_is_string=False,
@@ -768,7 +1245,7 @@ class HaloAnalysis:
         """function access the progenitor information finds the correct (most massive) progenitor index to a given haloid"""
         print('HERE 721! data_before:\n', data_before[['haloid','descIndex', 'predIndex', 'rootIndex', 'n_particles', 'mhalo', 'x_pos', 'y_pos', 'z_pos']])
 
-        data = self.load_data_ROCKSTAR(self.path_basename,
+        data = self.load_data_ROCKSTAR(self.pathname_dict['path_basename'],
                                        snapid,
                                        return_particle_info=False)
             
@@ -863,133 +1340,11 @@ class HaloAnalysis:
         
         if len(progIDs)>0:         
             ha_lib.writeIntoFile(
-                       self.path_basename+self.output_filename_data_tree_basename+str(rootID)+'.txt',
+                       self.pathname_dict['path_basename']+self.pathname_dict['output_filename_data_tree_basename']+str(rootID)+'.txt',
                        data[mycols],
-                       myheader='All halos fro Cholla 50Mpc 256 box from Bruno run 29/01/2021\n'+myheader,
+                       myheader='Cholla'+str(self.config_dict['res'])+' '+str(self.config_dict['box_size_h-1Mpc'])+'h-1Mpc all halos in maind branch with rootID: '+str(rootID)+'\n'+myheader,
                        mydelimiter='\t',
                        data_format=myformat_string)      
             
         return data
        
-       
-    def verify_merger_trees(self):  
-        """Function compares the particle content in the Cholla particle.h5 files with the halo mass found by ROCKSTARS
-            UNDER CONSTRUCTION!
-       """       
-        cube_size=25000.0
-        dx=195.3125
-        n_rvir=1.5
-        perc_delta_halo=10
-        
-        filename_check_trees='anaconda/pro/data/Cholla256_50Mpc/Cholla256_50Mpc_check_merger_trees_'+str(n_rvir)+'Rvir.txt'
-        
-        header_prefix='ROCKSTAR run on Cholla256 50h-1Mpc, 0.81 < z < 11.51, main progenitors crossmatch with particle field in Cholla particle file. '\
-                        'Particles around '+str(n_rvir)+' x rvir [h-1comvkpc] where used.\n'
-                        
-        header_endfix=' (15) n_particle [count] (Cholla particle data) (16) halo mass [h-1Msun] (n_particle x particle mass (Cholla particle data)) '\
-                      '(17) delta(mhalo_particle-mhalo_Rockstar) [h-1Msun] (18) percentage delta(mhalo_particle-mhalo_Rockstar) [%] '\
-                      '(19) check delta(mhalo_particle-mhalo_Rockstar) [flag: (18)<'+str(perc_delta_halo)+'%==1,else==0]'                    
-        
-        for snapid,z in zip(self.snapid_array['snapid'][10:], self.snapid_array['z'][10:]):        
-            print('snapid:', snapid, 'redshift:', z,)
-                    
-            data_prog = self.HaloData[np.where(self.HaloData['Z']==z)[:][0]]
-            
-            print('n_progs:', data_prog.size, '\n////////////////////////////////////////////////////////\n')
-            
-            for k, prog in enumerate(data_prog[['x_pos', 'y_pos', 'z_pos']]):
-                
-                print('prog count:', k+1,'/', data_prog.size, 'haloid:', data_prog['haloid'][k], 'treeID:', data_prog['firstProgenitorID'][k],  'position(X,Y,Z) [h-1comvkpc]:', prog, '\n===============================================\n')
-        
-                #which cell is it?
-                cell_loc = ha_lib.find_cell_location(prog, dx)
-             
-                #In which sub-file is the cell stored!'
-                subcube_loc = ha_lib.find_cell_location(prog, cube_size)
-        
-                print('in sub-cube:', subcube_loc, '--> decimal:',)
-                binary_rep=int(str(subcube_loc[0])+str(subcube_loc[1])+str(subcube_loc[2]), base=2)
-                print(binary_rep)
-            
-                if binary_rep==4:
-                    binary_rep=1
-                elif binary_rep==1:
-                    binary_rep=4
-                elif binary_rep==3:
-                    binary_rep=6
-                elif binary_rep==6:
-                    binary_rep=3     
-         
-                #load particle data -- positions
-
-                path_p=str(snapid)+'_particles.h5.'+str(ha_lib.binaryToDecimal(binary_rep))
-
-                data_particle_pos= ha_lib.simple_hdf52struct_array(path_p, ['pos_x', 'pos_y', 'pos_z'])
-                
-                #load particle data -- density grid
-                #data_particle_grid= simple_hdf52struct_array(path_p, ['density', 'grav_potential'])
-                
-                #load hydro data
-                #path_f = '/data/256_hydro_50Mpc/'+snapid+'.h5.'+str(binaryToDecimal(binary_rep))
-                #data_hydro= simple_hdf52struct_array(path_f)
-                
-                #print np.info(data_particle_pos)    
-                #print np.info(data_particle_grid)    
-                #print np.info(data_hydro)
-                
-                #scan_file_format_Cholla(f_p, path_p)
-                   
-                print('r_vir:', format(data_prog['rvir'][k], '0.2f'), '[h-1kpc]',)        
-                
-                n_particle = len(ha_lib.find_members(data_particle_pos[['pos_x','pos_y','pos_z']], prog, n_rvir*data_prog['rvir'][k])[:][0])
-                
-                print('n_particles:', n_particle, 'mhalo_particle:', format(n_particle*m_particle , '0.5e'), '[h-1Msun]')
-                
-                output_string=''
-                myheader=''
-                
-                myprops={'0': {'name': 'haloid', 'unit':'-'}, '1': {'name':'descIndex', 'unit':'-'},'2': {'name':'predIndex','unit':'-'}, '3': {'name':'firstProgenitorID','unit':'-'},\
-                         '4': {'name':'npros','unit':'count'}, '5': {'name':'mhalo','unit':'h-1Msun'}, '6': {'name':'delta_mhalo','unit':'h-1Msun'}, '7': {'name':'rvir','unit':'h-1comkpc'},\
-                         '8': {'name':'delta_rvir','unit':'h-1comvkpc'}, '9': {'name':'x_pos','unit':'h-1comvkpc'}, '10': {'name':'y_pos','unit':'h-1comvkpc'}, '11': {'name':'z_pos','unit':'h-1comvkpc'},\
-                         '12': {'name':'Z','unit':'-'}}
-        
-                for i in range(len(myprops)):
-                    #print 'i:', i, myprops[str(i)]['name']
-                    myheader+='('+str(i+1)+') '+myprops[str(i)]['name']+' ['+myprops[str(i)]['unit']+'] '
-                    if myprops[str(i)]['name'].find('mhal')!=-1:
-                        output_string+=str(format(data_prog[k][myprops[str(i)]['name']], '0.5e'))+' '
-                    else:
-                        output_string+=str(data_prog[k][myprops[str(i)]['name']])+' '
-                
-                #print myheader
-                #print output_string
-                
-                delta_mhalo = n_particle*self.m_particle-data_prog[k]['mhalo']
-                
-                delta_mhalo_per = 100.0/data_prog[k]['mhalo']*delta_mhalo
-                
-                if delta_mhalo_per>-perc_delta_halo and delta_mhalo_per<perc_delta_halo:
-                    check_delta_mhalo=1
-                else:
-                    check_delta_mhalo=0                
-        
-                if str(snapid)=='21' and k==0:
-                   ha_lib.writeIntoFile(
-                               filename_check_trees,
-                               [output_string+' '+str(n_particle)+' '+str(format(n_particle*m_particle, '0.5e'))+' '+str(format(delta_mhalo, '0.5e'))+' '+str(format(delta_mhalo_per, '0.1f'))+' '+str(check_delta_mhalo)],
-                               myheader=header_prefix+myheader+header_endfix,
-                               append_mytext=False,
-                               data_is_string=False,
-                               data_format='%s')
-                else:
-                    ha_lib.writeIntoFile(
-                               filename_check_trees,
-                               output_string+' '+str(n_particle)+' '+str(format(n_particle*m_particle, '0.5e'))+' '+str(format(delta_mhalo, '0.5e'))+' '+str(format(delta_mhalo_per, '0.1f'))+' '+str(check_delta_mhalo)+'\n',
-                               append_mytext=True,
-                               data_is_string=True,
-                               data_format='%s')
-                    
-                print('\n===============================================\n')
-                                
-#initalize class and call MAIN!
-HaloAnalysis().MAIN(task)      

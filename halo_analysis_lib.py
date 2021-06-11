@@ -11,16 +11,112 @@ import halo_analysis_load_cats as ha_lc
 # system
 import numpy as np
 
-def find_cell_location(pos_vector, grid_res):
+def calcFastHisto(data,
+                  filename,
+                  col_name,
+                  col_unit,
+                  box_size,
+                  binning='log',
+                  nbins=15,
+                  custom_min_max=False,
+                  print_to_file=True,
+                  comment=''):
+          
+    print('fast histogramm -->', col_name, '[', col_unit, ']',end=' ')
+
+    if binning=='log':           
+        data = np.log10(data)
+        data = data[np.where(np.isfinite(data))[:][0]] 
+
+    if custom_min_max==True:
+        if col_name=='sfr':
+            data_min = 1e-4
+            data_max = 1000
+
+
+        elif col_name=='ssfr':
+            data_min = 1e-13
+            data_max = 1e-8
+
+        elif col_name=='mstar':
+            data_min = 1e9
+            data_max = 1e12                                          
+
+        elif col_name=='mbh':
+            data_min = 1e5
+            data_max = 1e9
+  
+        elif col_name.find('mhalo')!=-1:
+            data_min = 1e5
+            data_max = 1e15
+        elif col_name.find('age')!=-1:
+            data_min = 0.1
+            data_max = 10
+        elif col_name.find('rhalfmass')!=-1:
+            data_min = 1e-4
+            data_max = 1                
+        elif col_name=='vmax' or col_name=='vdisp':
+            data_min = 10
+            data_max = 10000
+        elif col_name=='cgf':
+            data_min = 1e-5
+            data_max = 10                   
+    else:
+        data_min=min(data)
+        data_max=max(data)
         
-    cell_vector=[0,0,0]
-    for i, pos in enumerate(pos_vector):
-        pos=int(np.floor(pos_vector[i]/grid_res))
-        if pos>=128:
-            pos-=128
-        cell_vector[i]=pos
+    data = data[np.where(data>=data_min)[:][0]]
+    data = data[np.where(data<data_max)[:][0]]
+          
+        
+#        data = data[np.where(data>=np.percentile(data,0.01))[:][0]]
+#        data = data[np.where(data<np.percentile(data,99.9))[:][0]]
+              
+    print('data min/max:', min(data), '/', max(data),end='')
     
-    return cell_vector 
+    binsize = (data_max-data_min)/nbins
+    print('nbins:', nbins, 'binsize:', binsize)
+    
+    bins = np.linspace(data_min, data_max, nbins+1)
+    print('bins:', bins)
+   
+    counts, edges = np.histogram(data, bins)
+
+    histo=np.zeros((nbins, 7), dtype=np.float32)
+   
+    if binning =='log':
+        histo[:,0]= (10**edges[1:]*10**edges[:-1])**0.5
+    else:
+        histo[:,0]= (edges[1:]+edges[:-1])/2
+        
+    print(edges)
+
+    volume=box_size**3
+    print(' binsize:', binsize, 'box_size:', box_size, 'volume:', volume)
+    
+    histo[:,1]=counts/binsize/volume
+    histo[:,2]=binsize
+    histo[:,3]=histo[:,2]
+    histo[:,4]=histo[:,1]/counts**0.5
+    histo[:,5]=histo[:,4]
+    histo[:,6]=counts
+
+    if col_unit.find('h-1')!=-1:
+        y_unit='h^3 Mpc-3 dex-1'
+    else:
+        y_unit='Mpc-3 dex-1'
+        
+    header='\n(1) '+col_name+' ['+col_unit+'] (2) Phi ['+y_unit+'] (3) dx \t(4) -dx (5) -dy\t(6) +dy\t(7) N count'    
+    
+    if print_to_file==True:
+        writeIntoFile(filename,
+                       histo,
+                       myheader='FAST HISTOGRAMM! cumulative: NO'+comment+header,
+                       data_format="%0.8e",
+                       mydelimiter='\t')
+
+    return histo          
+
 
 def create_data_array(dt_name, delimiter='\t'):
     """create a common structured array header information and string of formats (with delimiter specified) which can be used to print the data structure into file"""
@@ -65,6 +161,17 @@ def df_to_sarray(df):
         z[k] = v[:, i]
     return z    
 
+def find_cell_location(pos_vector, grid_res):
+        
+    cell_vector=[0,0,0]
+    for i, pos in enumerate(pos_vector):
+        pos=int(np.floor(pos_vector[i]/grid_res))
+        if pos>=128:
+            pos-=128
+        cell_vector[i]=pos
+    
+    return cell_vector 
+
 def find_members(data,
                  vector,
                  radius):
@@ -101,10 +208,12 @@ def find_unit(prop):
 
     if test==-1:
         try:
-            unit=props_unit[prop[:-1]]
+            unit=props_unit[prop]
         except:
- 
-            unit=('[-]','%i')            
+            try:
+                unit=props_unit[prop[:-1]]
+            except: 
+                unit=('[-]','%i')
     else:
         try:
             unit=props_unit[prop[:-1]]
@@ -261,6 +370,19 @@ def read_unshaped_txt(path, nr_rows, nr_cols, start_from_row=0, delimiter=' ', c
  
     return data_array
 
+def redshift_to_expfactor(redshift):
+    
+    """Converts the redshift to the expansion factor"""
+    
+    return 1.0/(redshift + 1.0) 
+
+
+def expfactor_to_redshift(exp_factor):
+    
+    """Converts the expansion factor to the redshift""" 
+   
+    return 1.0 / exp_factor - 1
+
 def scan_file_format_Cholla(f,path):   
     
     print('\n1) Attributes\n-------------------------')
@@ -283,19 +405,21 @@ def scan_file_format_Cholla(f,path):
 
         except:
             print('--> failed!\n')
-    
+   
 def writeIntoFile(filename,
                     data2write,
                     mydelimiter='',
                     myheader='',
                     data_format='%.6e',
                     append_mytext=False,
-                    data_is_string=False):
+                    data_is_string=False,
+                    verbose=True):
     
-    print('wirteINotFile:', filename) 
+    if verbose==False:
+        print('wirteINotFile:', filename) 
             
     if append_mytext!=True:
-        f_handle = file(filename, 'w')  
+        f_handle = open(filename, 'w')  
         if data_is_string==True:
             f_handle.write(data2write)
         else:
@@ -307,3 +431,86 @@ def writeIntoFile(filename,
         else:
             np.savetxt(f_handle, data2write, fmt=data_format, delimiter=mydelimiter)
     f_handle.close()
+    
+def create_DescScales_file(path_to_data,
+                           snapid_start,
+                           snapid_end):
+    """Input file to run Consitent-Trees.
+        Consistent-Trees needs a file which states the snapid and the scalefactor in an increasing manner
+        e.g. >0 0.100
+             >1 0.120
+             >2 0.140             
+        This function scan a certain folder called 'path_to_data' for 'out_*.list' files and stores the
+        snapid and scale factors in '/path_to_data/DescScales.txt'.
+        It assumes that the lowest snapid is 0 and by default scans 1000 
+    """
+    import pandas as pd
+    
+    for snap in range(snapid_start,snapid_end+1,1):
+
+        path = path_to_data+'out_'+str(snap)+'.list'
+        #print('snapid:', snap, end='')
+
+        #read only the row where the scale factor is shown in the header of Rockstar output file!
+        data = pd.read_csv(path, skiprows=1, nrows=1, dtype=str, index_col=False, header=None).at[0,0]
+                                     
+        scale_factor=data[data.find('= ')+1::]
+        #print(', a:', scale_factor)
+        if snap==0:
+            writeIntoFile(
+                        path_to_data+'DescScales.txt',
+                        [str(snap)+' '+str(scale_factor)],
+                        myheader='',
+                        append_mytext=False,
+                        data_is_string=False,
+                        data_format='%s',
+                        verbose=True)
+        else:
+            writeIntoFile(
+                       path_to_data+'DescScales.txt',
+                       str(snap)+' '+str(scale_factor)+'\n',
+                       append_mytext=True,
+                       data_is_string=True,
+                       data_format='%s',
+                       verbose=True)
+            
+    print('File successfully created -->', path_to_data+'DescScales.txt')
+    
+def create_snapidzred_file(path_to_data,
+                           path_orginal_data_hydro,
+                           snapid_start,
+                           snapid_end):
+    
+    import h5py as hdf5
+    
+    for snap in range(snapid_start,snapid_end+1,1):
+        print('snapid:', snap, end='')
+        path = path_orginal_data_hydro+str(snap)+'_particles.h5.'+str(0)
+        print('-->', path)
+        print(path_to_data)
+        f=hdf5.File(path, "r")
+        
+#        for k in range(0,len(f.attrs.keys()),1):
+#            print('\t', f.attrs.keys()[k], ':\t\t', f.attrs.values()[k][0]) 
+        
+        if snap==snapid_start:
+            writeIntoFile(
+                        path_to_data+'snapidzred.txt',
+                        [str(snap)+' '+str(f.attrs['Current_a'][0])+' '+str(f.attrs['Current_z'][0])+' '+str(f.attrs['t'][0])],
+                        myheader=path_to_data+'\n(1) snapshot number (2) scale factor a (2) redshift z (4) t',
+                        append_mytext=False,
+                        data_is_string=False,
+                        data_format='%s',
+                        verbose=True)
+        else:
+            writeIntoFile(
+                       path_to_data+'snapidzred.txt',
+                       str(snap)+' '+str(f.attrs['Current_a'][0])+' '+str(f.attrs['Current_z'][0])+' '+str(f.attrs['t'][0])+'\n',
+                       append_mytext=True,
+                       data_is_string=True,
+                       data_format='%s',
+                       verbose=True)    
+    
+
+    print('File successfully created -->', path_to_data+'snapidzred.txt')
+    

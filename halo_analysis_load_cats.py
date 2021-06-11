@@ -31,10 +31,10 @@ def get_dtype_sarray(name):
     
     """
     
-    def ConsistentTrees_ASCII():
+    def ConsistentTrees_ASCII_099():
         """
-        Property names and column in Consitent-Tree ascii files (after runing it on ROCKSTAR), original labels of properties in the file are commanded. 
-        Label names are converted to internal universal name convention.
+        Property names and column in Consitent-Tree ascii (CT) files (after runing it on ROCKSTAR), original labels of properties in the file are commanded. 
+        Label names are converted to internal universal name convention. This is the bucket for version 0.99 of CT
 
        
         List of property labels in Rockstar ascii files:    
@@ -74,9 +74,9 @@ def get_dtype_sarray(name):
                 ('DFirstID'        , np.int64),   #Depth_first_ID(28)               
                 ('rootIndex'       , np.int64),   #Tree_root_ID(29)                               
                 ('haloid'          , np.int64),   #Orig_halo_ID(30)
-                ('snapid'          , np.int32),    #Snap_num(31)                
+                ('snapid'          , np.int32),   #Snap_num(31)                
                 ('NextCoDFirstID'  , np.int64),   #Next_coprogenitor_depthfirst_ID(32)
-                ('LastCoDFirstID'  , np.int64),   #Last_progenitor_depthfirst_ID(33)                 
+                ('LastDFirstID'    , np.int64),   #Last_progenitor_depthfirst_ID(33)                 
                 ('rscale_Klypin'   , np.float32), #rs_Klypin
                 ('mhalo+unbound'   , np.float32), #mvir_all                            
                 ('mhalo_200b'      , np.float32), #m200b   
@@ -103,11 +103,131 @@ def get_dtype_sarray(name):
                  ] 
         return dt
 
+    def ConsistentTrees_ASCII_101():
+        """
+        Property names and column in Consitent-Tree ascii (CT) files (after runing it on ROCKSTAR), original labels of properties in the file are commanded. 
+        Label names are converted to internal universal name convention. This is the bucket for version 1.01 of CT. This version has the very import
+        mainLeaf_depthFirstIDincluded
+
+       
+        List of property labels in Rockstar ascii files:    
+            scale(0) id(1) desc_scale(2) desc_id(3) num_prog(4) pid(5) upid(6) desc_pid(7) phantom(8) sam_mvir(9) mvir(10) rvir(11) rs(12) vrms(13) mmp?(14)
+            scale_of_last_MM(15) vmax(16) x(17) y(18) z(19) vx(20) vy(21) vz(22) Jx(23) Jy(24) Jz(25) Spin(26) Breadth_first_ID(27) Depth_first_ID(28) Tree_root_ID(29)
+            Orig_halo_ID(30) Snap_num(31) Next_coprogenitor_depthfirst_ID(32) Last_progenitor_depthfirst_ID(33) Rs_Klypin Mvir_all M200b M200c M500c M2500c Xoff Voff
+            Spin_Bullock b_to_a c_to_a A[x] A[y] A[z] b_to_a(500c) c_to_a(500c) A[x](500c) A[y](500c) A[z](500c) T/|U| M_pe_Behroozi M_pe_Diemer Halfmass_Radius
+            
+            
+            #scale(0) id(1) desc_scale(2) desc_id(3) num_prog(4) pid(5) upid(6) desc_pid(7) phantom(8) sam_Mvir(9) Mvir(10) Rvir(11) rs(12) vrms(13) mmp?(14)
+            scale_of_last_MM(15) vmax(16) x(17) y(18) z(19) vx(20) vy(21) vz(22) Jx(23) Jy(24) Jz(25) Spin(26) Breadth_first_ID(27) Depth_first_ID(28) Tree_root_ID(29)
+            Orig_halo_ID(30) Snap_idx(31) Next_coprogenitor_depthfirst_ID(32) Last_progenitor_depthfirst_ID(33) Last_mainleaf_depthfirst_ID(34) Tidal_Force(35) Tidal_ID(36) 
+            Rs_Klypin(37) Mvir_all(38) M200b(39) M200c(40) M500c(41) M2500c(42) Xoff(43) Voff(44) Spin_Bullock(45) b_to_a(46) c_to_a A[x](47) A[y](48) A[z](49) b_to_a(500c)(50) c_to_a(500c)(51) A[x](500c)(52) A[y](500c)(53) A[z](500c)(54) T/|U|(55) M_pe_Behroozi(56) M_pe_Diemer(57) Halfmass_Radius(58)
+        """
+        dt=    [('a'               , np.float32), #scale(0)
+                ('haloid_CT'       , np.int64),   #id(1)
+                ('a_desc'          , np.float32), #desc_scale(2)
+                ('descID'          , np.int64),   #desc_id(3)
+                ('n_prog'          , np.int32),   #num_prog(4)
+                ('hostid_LM'       , np.int64),   #pid(5)              
+                ('hostid_MM'       , np.int64),   #upid(6)
+                ('desc_hostid_MM'  , np.int64),   #desc_pid(7)
+                ('is_phantom'      , np.int32),    #phantom(8)             
+                ('sam_mvir'        , np.float32), #sam_mvir(9)
+                ('mhalo'           , np.float32), #mvir(10)                
+                ('rvir'            , np.float32), #rvir(11)
+                ('rscale'          , np.float32), #rs(12)
+                ('vrms'            , np.float32), #vrms(13)                               
+                ('is_mmp'          , np.int32),    #mmp?(14)
+                ('a_lastMM'        , np.float32), #scale_of_last_MM(15)
+                ('vmax'            , np.float32), #vmax(16)
+                ('x_pos'           , np.float32), #x(17)
+                ('y_pos'           , np.float32), #y(18)
+                ('z_pos'           , np.float32), #z(19)
+                ('x_vel'           , np.float32), #vx(20)
+                ('y_vel'           , np.float32), #vy(21)
+                ('z_vel'           , np.float32), #vz(22)
+                ('x_ang'           , np.float32), #Jx(23)
+                ('y_ang'           , np.float32), #Jy(24)
+                ('z_ang'           , np.float32), #Jz(25)
+                ('spinParameter'   , np.float32), #Spin(26)
+                ('BFirstID'        , np.int64),   #Breadth_first_ID(27)
+                ('DFirstID'        , np.int64),   #Depth_first_ID(28)               
+                ('rootIndex'       , np.int64),   #Tree_root_ID(29)                               
+                ('haloid'          , np.int64),   #Orig_halo_ID(30)
+                ('snapid'          , np.int32),   #Snap_num(31)                
+                ('NextCoDFirstID'  , np.int64),   #Next_coprogenitor_depthfirst_ID(32)
+                ('LastDFirstID'    , np.int64),   #Last_progenitor_depthfirst_ID(33)
+                ('LastMLDFirstID', np.int64),#Last_mainleaf_depthfirst_ID(34)
+                ('tidalForce'      , np.float32), #Tidal_Force
+                ('tidalID'         , np.int64), #Tidal_ID                 
+                ('rscale_Klypin'   , np.float32), #rs_Klypin
+                ('mhalo+unbound'   , np.float32), #mvir_all                            
+                ('mhalo_200b'      , np.float32), #m200b   
+                ('mhalo_200c'      , np.float32), #m200c
+                ('mhalo_500c'      , np.float32), #m500c
+                ('mhalo_2500c'     , np.float32), #m2500c
+                ('x_off'           , np.float32), #Xoff
+                ('v_off'           , np.float32), #Yoff
+                ('spin_Bullock'    , np.float32), #spin_bullock
+                ('b_to_a'          , np.float32), #b_to_a  
+                ('c_to_a'          , np.float32), #c_to_a
+                ('x_a'             , np.float32), #A[x]
+                ('y_a'             , np.float32), #A[y]
+                ('z_a'             , np.float32), #A[z] 
+                ('b_to_a_500c'     , np.float32), #b_to_a(500c)
+                ('c_to_a_500c'     , np.float32), #c_to_a(500c)    
+                ('x_a_500c'        , np.float32), #A[x](500c)    
+                ('y_a_500c'        , np.float32), #A[y](500c) 
+                ('z_a_500c'        , np.float32), #A[z](500c)
+                ('T_U'             , np.float32), #T/|U|
+                ('Mpseudo_Behroozi', np.float32), #M_pe_Behroozi
+                ('Mpseudo_Diemer'  , np.float32), #M_pe_Diemer
+                ('rhalf_mass'      , np.float32), #Halfmass_Radius           
+                 ] 
+        return dt
+
+    
+
+    def ConsistentTrees_basic_ASCII():
+        """
+        Property names and column in Consitent-Tree ascii files (after runing it on ROCKSTAR), original labels of properties in the file are commanded. 
+        Label names are converted to internal universal name convention.
+
+       
+        Basic list of property labels in ConsistentTree ascii files:    
+            # snapid(1) a(2) a_desc(3) a_lastMM(4) rootIndex(5) descID(6) DFirstID(7) LastDFirstID(8) LastMLDFirstID(9) haloid_CT(10) orignal_haloid_RS(11) '
+            x_pos(12) y_pos(13) z_pos(14) mhalo(15) vmax(16) rhalf_mass(17) rvir(18) T_U(19) subTreeID(20)
+        """
+        dt=    [('snapid'          , np.int32), #(1) haloid 
+                ('a'          , np.float32),   #(2) descIndex
+                ('a_desc'          , np.float32), #(3) rootIndex 
+                ('a_lastMM'          , np.float32),   #(4) predIndex
+                ('rootIndex'           , np.int64), #(5) Mvir [h-1Msun]                
+                ('descID'     , np.int64), #(6) delta_Mvir [h-1Msun]
+                ('DFirstID'            , np.int64), #(7) Rvir [h-1kpc]
+                ('LastDFirstID'      , np.int64), #(8) delt_Rvir [h-1kpc]              
+                ('LastMLDFirstID'          , np.int64), #(12) snapid
+                ('haloid_CT'     , np.int64), #(13) n_particles
+                ('orignal_haloid_RS'         , np.int64), #(14) n_progs
+                ('x_pos'           , np.float32), #(9) X [h-1Mpc]
+                ('y_pos'           , np.float32), #(10) Y [h-1Mpc]
+                ('z_pos'           , np.float32), #(11) Z [h-1Mpc]
+                ('mhalo'           , np.float32), #(9) X [h-1Mpc]
+                ('vmax'           , np.float32), #(10) Y [h-1Mpc]
+                ('rhalf_mass'           , np.float32), #(11) Z [h-1Mpc]
+                ('rvir'           , np.float32), #(9) X [h-1Mpc]
+                ('T_U'           , np.float32), #(10) Y [h-1Mpc]
+                ('subTreeID'           , np.int32), #(11) Z [h-1Mpc]                
+                 ] 
+        return dt
+
+    
+    
+
     def stats_basic_bucket():
 
         dt =    [
                 ('mhalo1'                      , np.float32),
-                ('delta_mhalo'                , np.float32),
+                ('delta_mhalo'                 , np.float32),
                 ('delta_mhalo_perc'            , np.float32),                
                 ('rvir1'                       , np.float32),
                 ('delta_rvir'                  , np.float32),
@@ -238,11 +358,12 @@ def get_dtype_sarray(name):
                 ('z_pos2'             , np.float32),                      
                 ('delta_x_pos_perc'   , np.float32),                              
                 ('delta_y_pos_perc'   , np.float32),                     
-                ('delta_z_pos_perc'   , np.float32)  
+                ('delta_z_pos_perc'   , np.float32),
+                ('subTreeID'          , np.int64)
                 ]
         
         return dt
-    
+
     
     def ROCKSTAR_ASCII():
         """
@@ -475,7 +596,9 @@ def get_dtype_sarray(name):
 
     choose = {
         'merger_trees_ASCII':   merger_trees_ASCII,
-        'ConsistentTrees_ASCII': ConsistentTrees_ASCII,
+        'ConsistentTrees_basic_ASCII':   ConsistentTrees_basic_ASCII,        
+        'ConsistentTrees_ASCII_099': ConsistentTrees_ASCII_099,
+        'ConsistentTrees_ASCII_101': ConsistentTrees_ASCII_101,
         'stats_basic_bucket':   stats_basic_bucket,
         'stats_perc_bucket':    stats_perc_bucket,
         'ROCKSTAR_ASCII':       ROCKSTAR_ASCII,
@@ -508,7 +631,7 @@ def load_ASCII_AHF():
 
 def load_ASCII_ConsitentTrees(path):   
 
-    dt   = get_dtype_sarray('ConsistentTrees_ASCII')
+    dt   = get_dtype_sarray('ConsistentTrees_ASCII_101')
    
     data = ha_lib.df_to_sarray(pd.read_csv(path, comment='#', names=[k[0] for k in dt], delim_whitespace=True, dtype=dt))                              
         
