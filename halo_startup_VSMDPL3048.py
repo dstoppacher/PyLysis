@@ -21,16 +21,17 @@ import haloAnalysis as HA
 #Enter what you want to analyse!
 #choose one of those:
  
-task='load_entire_box' 
-task='compare_individual_halos'
-task='construct_main_prog_tree'
-task='get_main_branch'
-#task='walk_merger_trees'
-#task='load_ascii_file'
-#task='get_halo_info'
-task='get_merger_tree_stats'
 #task='create_DescScales_file'
 #task='create_snapidzred_file'
+#task='compare_individual_halos'
+#task='construct_main_prog_tree'
+#task='get_halo_info'
+#task='get_tree_statistics'
+#task='load_entire_box' 
+#task='load_ascii_file'
+task='walk_merger_trees'
+#task='utilise'
+task='identify_merger_trees'
 
 
 
@@ -46,7 +47,9 @@ task='get_merger_tree_stats'
     -the total number of snapshot which contain halos might be handy to know!
 """
 
-#Cholla simulation configuration
+#simulation configuration
+
+#Resolution: number of particles 1-dim
 res=3840
 
 pathname_dict={       

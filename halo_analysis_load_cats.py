@@ -12,7 +12,8 @@ import halo_analysis_lib as ha_lib
 import pandas as pd
 import numpy as np
 
-def get_dtype_sarray(name):
+def get_dtype_sarray(name,
+                     colnames=None):
     """Function returns the a dictionary of the labels and dtypes of the properties stored in certain output files such as ROCKSTAR or Gadget.
         cfc stands for 'common filename convention'
     
@@ -22,7 +23,11 @@ def get_dtype_sarray(name):
         name:   name of the output files such as ROCKSTAR_ASCII (cfc: halos_x.x.ascii), 
                                                  ROCKSTAR_binary (cfc: halos_x.x.bin), 
                                                  ROCKSTAR_ASCII_list (cfc: out_x.list files whole halo catalog at snapshot)
-                                                 Gadget_binary (cfc: ?)               
+                                                 Gadget_binary (cfc: ?)
+        colnames: default is 'None', list of properties containing the set of output properties which should be processed. If 'None' then
+                  the standard set of properties is expected.
+        
+        
         output
         =========
         
@@ -243,9 +248,62 @@ def get_dtype_sarray(name):
                 ]
         
         return dt
+
+    def stats_custom_bucket():       
         
-    def stats_perc_bucket():
-      
+        mytypes={0: ('snapid', np.int32),
+                 1: ('z',  np.float32),
+                 2: ('a',  np.float32),
+                 3: ('n_count',  np.int64)
+                 }
+        offset=len(mytypes.keys())
+        
+        for i,prop in enumerate(colnames):
+            log_info=ha_lib.get_property_dict()[prop]['output_prop_as']
+            #print('i:', i, 'colname:', prop, 'key:', i+offset)    
+            mytypes.update({offset+i*6+0: (prop+'_'+log_info+'50', ha_lib.lookup_property(prop)['dtype']),
+                            offset+i*6+1: (prop+'_'+log_info+'10', ha_lib.lookup_property(prop)['dtype']),
+                            offset+i*6+2: (prop+'_'+log_info+'32', ha_lib.lookup_property(prop)['dtype']), 
+                            offset+i*6+3: (prop+'_'+log_info+'68', ha_lib.lookup_property(prop)['dtype']),
+                            offset+i*6+4: (prop+'_'+log_info+'90', ha_lib.lookup_property(prop)['dtype']),
+                            offset+i*6+5: (prop+'_'+log_info+'MAD', ha_lib.lookup_property(prop)['dtype']),
+#                            offset+i*18+6: ('delta_'+prop+'_'+log_info+'50', np.float32),
+#                            offset+i*18+7: ('delta_'+prop+'_'+log_info+'10', np.float32),
+#                            offset+i*18+8: ('delta_'+prop+'_'+log_info+'32', np.float32),
+#                            offset+i*18+9: ('delta_'+prop+'_'+log_info+'68', np.float32),
+#                            offset+i*18+10: ('delta_'+prop+'_'+log_info+'90', np.float32),
+#                            offset+i*18+11: ('delta_'+prop+'_'+log_info+'MAD', np.float32),
+#                            offset+i*18+12: ('delta_'+prop+'_perc_50', np.float32),
+#                            offset+i*18+13: ('delta_'+prop+'_perc_10', np.float32),
+#                            offset+i*18+14: ('delta_'+prop+'_perc_32', np.float32),
+#                            offset+i*18+15: ('delta_'+prop+'_perc_68', np.float32),
+#                            offset+i*18+16: ('delta_'+prop+'_perc_90', np.float32),
+#                            offset+i*18+17: ('delta_'+prop+'_perc_MAD', np.float32),
+                            })
+
+        #print(mytypes)
+        #return np.dtype([(mytypes[k][0], mytypes[k][1]) for k in mytypes.keys()])
+    
+        return [(mytypes[k][0], mytypes[k][1]) for k in mytypes.keys()]
+
+    def stats_no_particles_perc_bucket():
+
+        dt =    [
+                ('mhalo1'                      , np.float32),
+                ('delta_mhalo'                 , np.float32),
+                ('delta_mhalo_perc'            , np.float32),                
+                ('rvir1'                       , np.float32),
+                ('delta_rvir'                  , np.float32),
+                ('delta_rvir_perc'             , np.float32),
+                ('delta_x_pos_perc'            , np.float32), 
+                ('delta_y_pos_perc'            , np.float32), 
+                ('delta_z_pos_perc'            , np.float32)
+                ]
+        
+        return dt
+        
+    def stats_perc_bucket(colnames=[]):
+              
         dt =    [
                 ('snapid'                      , np.int32),  
                 ('z'                           , np.float32),                
@@ -601,10 +659,11 @@ def get_dtype_sarray(name):
         'ConsistentTrees_ASCII_101': ConsistentTrees_ASCII_101,
         'stats_basic_bucket':   stats_basic_bucket,
         'stats_perc_bucket':    stats_perc_bucket,
+        'stats_custom_bucket':  stats_custom_bucket,        
         'ROCKSTAR_ASCII':       ROCKSTAR_ASCII,
         'ROCKSTAR_binary':      ROCKSTAR_binary,
         'ROCKSTAR_ASCII_list':  ROCKSTAR_ASCII_list,
-        'Gadget_binary':        Gadget_binary 
+        'Gadget_binary':        Gadget_binary
         }
 
     func = choose.get(name)

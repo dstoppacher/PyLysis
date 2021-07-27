@@ -26,10 +26,12 @@ import haloAnalysis as HA
 #task='compare_individual_halos'
 #task='construct_main_prog_tree'
 #task='get_halo_info'
+#task='get_tree_statistics'
 #task='load_entire_box' 
-#task='load_ascii_file'
+task='load_ascii_file'
 #task='walk_merger_trees'
-task='utilise'
+#task='utilise'
+task='identify_merger_trees'
 
 
 

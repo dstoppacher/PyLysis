@@ -17,7 +17,7 @@ def calcFastHisto(data,
                   col_unit,
                   box_size,
                   binning='log',
-                  nbins=15,
+                  nbins=30,
                   custom_min_max=False,
                   print_to_file=True,
                   comment=''):
@@ -78,7 +78,7 @@ def calcFastHisto(data,
     print('nbins:', nbins, 'binsize:', binsize)
     
     bins = np.linspace(data_min, data_max, nbins+1)
-    print('bins:', bins)
+    #print('bins:', bins)
    
     counts, edges = np.histogram(data, bins)
 
@@ -117,13 +117,16 @@ def calcFastHisto(data,
 
     return histo          
 
-
-def create_data_array(dt_name, delimiter='\t'):
+def create_data_array(dt_name='',
+                      delimiter='\t',
+                      colnames=[]):
     """create a common structured array header information and string of formats (with delimiter specified) which can be used to print the data structure into file"""
 
-    dt = ha_lc.get_dtype_sarray(dt_name)
+    dt = ha_lc.get_dtype_sarray(dt_name,
+                                colnames=colnames)
                     
     data_array = np.zeros((1,),dtype=dt)
+    #print(np.info(data_array))
 
     header=''
     cols=[]
@@ -184,24 +187,28 @@ def find_unit(prop):
     props_unit = {'rvir':   ('[h-1Mpc]', '%0.5f'),
                   'mhalo':  ('[h-1Msun]','%0.5e'),
                   'pos1':   ('[h-1Mpc]','%0.5f'),
-                  'pos2':   ('[h-1Mpc]', '%0.5f'),                    
+                  'pos2':   ('[h-1Mpc]', '%0.5f'),
+                  'pos':   ('[h-1Mpc]', '%0.5f'),                    
                   'perc1':  ('[%]','%0.1f'),
                   'perc2':  ('[%]','%0.1f'),
                   'perc':   ('[%]','%0.1f'),                      
                   'ns':     ('[-]','%i'),
                   'shared': ('[-]','%i'),
-                  'z':      ('[-]', '%0.2f'),                  
+                  'z':      ('[-]', '%0.4f'),
+                  'a':      ('[-]', '%0.4f'),                   
                   'log50':  ('log10(50th)', '%0.2f'),                 
                   'log10':  ('log10(10th)', '%0.2f'),
                   'log32':  ('log10(32th)', '%0.2f'),
                   'log68':  ('log10(68th)', '%0.2f'),
                   'log90':  ('log10(90th)', '%0.2f'),
-                  '50':     ('50th', '%0.2f'),                 
-                  '10':     ('10th', '%0.2f'),
-                  '32':     ('32th', '%0.2f'),
-                  '68':     ('68th', '%0.2f'),
-                  '90':     ('90th', '%0.2f'),
-                  'count':  ('[-]','%i')
+                  '50':     ('50th', '%0.6e'),                 
+                  '10':     ('10th', '%0.6e'),
+                  '32':     ('32th', '%0.6e'),
+                  '68':     ('68th', '%0.6e'),
+                  '90':     ('90th', '%0.6e'),
+                  'count':  ('[-]','%i'),
+                  'MAD':    ('MAD', '%0.6e'),
+                  'logMAD': ('log(MAD)', '%0.2f')
                 }    
 
     test = prop[::-1].find('_')
@@ -225,6 +232,57 @@ def find_unit(prop):
                 
     return unit[0], unit[1]
 
+
+def get_property_dict():
+    """method returns a dictionary of all formats, units, and dtyes of all available properties. The
+    property names serve as keys.
+    """
+    
+    h='h-1'
+    format_float='%0.6f'
+    format_exp='%0.7e'
+    format_int='%i'
+    dtype_prop=np.float32
+    dtype_exp=np.float64
+    dtype_ID_large=np.int64
+    dtype_ID_small=np.int32
+    
+    property_dict={
+                #standard properties
+                'mhalo':        {'format': format_exp, 'unit': h+'Msun', 'dtype': dtype_prop, 'output_prop_as': ''},
+                'delta_mhalo':  {'format': format_exp, 'unit': h+'Msun', 'dtype': dtype_prop, 'output_prop_as': ''},
+                'delta_mhalo_perc':  {'format': format_float, 'unit': '%', 'dtype': dtype_prop, 'output_prop_as': ''},                 
+                'rvir':         {'format': format_float, 'unit': h+'Msun', 'dtype': dtype_prop, 'output_prop_as': ''},
+                'rhalf_mass':   {'format': format_float, 'unit': h+'Msun', 'dtype': dtype_prop, 'output_prop_as': ''},                    
+                'delta_rvir':   {'format': format_float, 'unit': h+'Msun', 'dtype': dtype_prop, 'output_prop_as': ''},
+                'delta_rvir_perc':  {'format': format_float, 'unit': '%', 'dtype': dtype_prop, 'output_prop_as': ''}, 
+                'vmax':         {'format': format_float, 'unit': h+'Msun', 'dtype': dtype_prop, 'output_prop_as': ''},                   
+                'x_pos':        {'format': format_float, 'unit': h+'Msun', 'dtype': dtype_prop, 'output_prop_as': ''},
+                'y_pos':        {'format': format_float, 'unit': h+'Msun', 'dtype': dtype_prop, 'output_prop_as': ''},
+                'z_pos':        {'format': format_float, 'unit': h+'Msun', 'dtype': dtype_prop, 'output_prop_as': ''},
+                'T_U':          {'format': format_float, 'unit': h+'Msun', 'dtype': dtype_prop, 'output_prop_as': ''},
+                #temporal axis & demographics
+                'count':        {'format': format_int, 'unit': '-', 'dtype': dtype_ID_large, 'output_prop_as': ''},
+                'n_count':        {'format': format_int, 'unit': '-', 'dtype': dtype_ID_large, 'output_prop_as': ''},                
+                'snapid':       {'format': format_int, 'unit': '-', 'dtype': dtype_ID_small, 'output_prop_as': ''},
+                'z':            {'format': '%0.4f', 'unit': '-', 'dtype': dtype_prop, 'output_prop_as': ''},
+                'a':            {'format': '%0.4f', 'unit': '-', 'dtype': dtype_prop, 'output_prop_as': ''},
+                'a_desc':       {'format': '%0.4f', 'unit': '-', 'dtype': dtype_prop, 'output_prop_as': ''},
+                'a_lastMM':     {'format': '%0.4f', 'unit': '-', 'dtype': dtype_prop, 'output_prop_as': ''},
+                #IDs                     
+                'haloid':       {'format': format_int, 'unit': 'ID', 'dtype': dtype_ID_large, 'output_prop_as': ''},
+                'haloid_CT':         {'format': format_int, 'unit': 'ID', 'dtype': dtype_ID_large, 'output_prop_as': ''},
+                'orignal_haloid_RS': {'format': format_int, 'unit': 'ID', 'dtype': dtype_ID_large, 'output_prop_as': ''},                     
+                'descID':       {'format': format_int, 'unit': 'ID', 'dtype': dtype_ID_large, 'output_prop_as': ''},
+                'DFirstID':     {'format': format_int, 'unit': 'ID', 'dtype': dtype_ID_large, 'output_prop_as': ''}, 
+                'LastDFirstID': {'format': format_int, 'unit': 'ID', 'dtype': dtype_ID_large, 'output_prop_as': ''}, 
+                'LastMLDFirstID':{'format': format_int, 'unit': 'ID', 'dtype': dtype_ID_large, 'output_prop_as': ''},                    
+                'rootIndex':    {'format': format_int, 'unit': 'ID', 'dtype': dtype_ID_large, 'output_prop_as': ''},
+                'subTreeID':    {'format': format_int, 'unit': 'ID', 'dtype': dtype_ID_large, 'output_prop_as': ''}                    
+                }
+        
+    return property_dict
+
 def get_props_for_stats_calc(cols,
                              input_is_dtype=False):
     """Function filters properties which allow startistical calculation from those which not. ID numbers or snapid are e.g. properties where
@@ -241,7 +299,13 @@ def get_props_for_stats_calc(cols,
            i.find('50')==-1 and i.find('10')==-1 and i.find('32')==-1 and i.find('68')==-1 and i.find('90')==-1:
             props.extend([i])        
             
-    return props
+    return props    
+
+def lookup_property(prop):
+    """Lookup a certain property in the 'property_dict' dictionary and return information on its format,
+    unit, data dtype, and preferred output format (as log10 or linear)"""
+        
+    return get_property_dict()[prop]
 
 def read_simple_hdf52struct_array(path,
                              cols=[]):
